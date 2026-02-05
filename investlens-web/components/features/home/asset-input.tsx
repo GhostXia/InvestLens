@@ -4,14 +4,16 @@ import { Search, ArrowRight } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Card, CardContent } from "@/components/ui/card"
-import { useState } from "react"
+import { useState, useRef, useEffect } from "react"
 import { useRouter } from "next/navigation"
+import { getApiUrl } from "@/lib/api-config"
 
 /**
  * AssetInput Component
  * 
  * The primary entry point for user interaction on the Home page.
  * Renders a large search bar designed to look like a modern search engine.
+
  * 
  * Behavior:
  * - Captures user input (Ticker or Asset Name).
@@ -22,29 +24,80 @@ import { useRouter } from "next/navigation"
  */
 export function AssetInput() {
     const [query, setQuery] = useState("")
+    const [results, setResults] = useState<any[]>([])
+    const [showResults, setShowResults] = useState(false)
+    const [loading, setLoading] = useState(false)
     const router = useRouter()
 
-    /**
-     * Handles form submission to navigate to analysis page.
-     * Prevents default form submit and encodes the query parameter.
-     */
+    // Debounce timer ref
+    const debounceRef = useRef<NodeJS.Timeout | null>(null)
+
+    // Close dropdown when clicking outside
+    useEffect(() => {
+        const handleClickOutside = (e: MouseEvent) => {
+            if (showResults) {
+                setShowResults(false)
+            }
+        }
+        document.addEventListener('click', handleClickOutside)
+        return () => document.removeEventListener('click', handleClickOutside)
+    }, [showResults])
+
+    const handleSearchChange = (value: string) => {
+        setQuery(value)
+        setShowResults(true)
+
+        if (debounceRef.current) {
+            clearTimeout(debounceRef.current)
+        }
+
+        if (value.length < 2) {
+            setResults([])
+            return
+        }
+
+        debounceRef.current = setTimeout(async () => {
+            setLoading(true)
+            try {
+                // Use centralized URL builder
+                const res = await fetch(getApiUrl(`/api/v1/search?q=${encodeURIComponent(value)}`))
+                if (res.ok) {
+                    const data = await res.json()
+                    setResults(data.results || [])
+                }
+            } catch (error) {
+                console.error("Search failed:", error)
+            } finally {
+                setLoading(false)
+            }
+        }, 300)
+    }
+
+    const selectResult = (item: any) => {
+        setQuery(item.ticker)
+        setShowResults(false)
+        router.push(`/analysis?ticker=${encodeURIComponent(item.ticker)}`)
+    }
+
     const handleSearch = (e: React.FormEvent) => {
         e.preventDefault()
         if (query.trim()) {
             router.push(`/analysis?ticker=${encodeURIComponent(query)}`)
+            setShowResults(false)
         }
     }
 
     return (
-        <Card className="w-full max-w-2xl border-none shadow-none bg-transparent">
-            <CardContent className="p-0">
-                <form onSubmit={handleSearch} className="relative flex items-center w-full">
+        <Card className="w-full max-w-2xl border-none shadow-none bg-transparent relative z-50">
+            <CardContent className="p-0 relative">
+                <form onSubmit={handleSearch} className="relative flex items-center w-full" onClick={e => e.stopPropagation()}>
                     <Search className="absolute left-4 h-5 w-5 text-muted-foreground" />
                     <Input
                         className="h-14 w-full rounded-full border-2 border-muted bg-background pl-12 pr-12 text-lg shadow-sm transition-all focus-visible:border-primary focus-visible:ring-0 focus-visible:ring-offset-0"
                         placeholder="Enter Ticker (e.g., AAPL) or Asset Name..."
                         value={query}
-                        onChange={(e) => setQuery(e.target.value)}
+                        onChange={(e) => handleSearchChange(e.target.value)}
+                        onFocus={() => { if (results.length > 0) setShowResults(true) }}
                     />
                     <Button
                         type="submit"
@@ -56,12 +109,40 @@ export function AssetInput() {
                         <span className="sr-only">Analyze</span>
                     </Button>
                 </form>
-                {/* Trending Suggestions used to guide new users */}
+
+                {/* Autocomplete Dropdown */}
+                {showResults && (results.length > 0 || loading) && (
+                    <div className="absolute top-16 left-0 right-0 bg-background border rounded-lg shadow-lg overflow-hidden py-1 max-h-80 overflow-y-auto z-50 animate-in fade-in zoom-in-95 duration-100">
+                        {loading && <div className="p-3 text-center text-sm text-muted-foreground">Searching...</div>}
+
+                        {!loading && results.map((item) => (
+                            <div
+                                key={item.isin || item.ticker}
+                                className="px-4 py-3 hover:bg-muted/50 cursor-pointer flex justify-between items-center transition-colors"
+                                onClick={(e) => {
+                                    e.stopPropagation()
+                                    selectResult(item)
+                                }}
+                            >
+                                <div>
+                                    <div className="font-semibold">{item.ticker}</div>
+                                    <div className="text-xs text-muted-foreground truncate max-w-[300px]">{item.name}</div>
+                                </div>
+                                <div className="text-right">
+                                    <div className="text-xs font-mono bg-muted px-1.5 py-0.5 rounded">{item.asset_type || 'Asset'}</div>
+                                    <div className="text-[10px] text-muted-foreground mt-0.5">{item.exchange}</div>
+                                </div>
+                            </div>
+                        ))}
+                    </div>
+                )}
+
+                {/* Trending Suggestions */}
                 <div className="mt-4 flex justify-center gap-2 text-sm text-muted-foreground">
                     <span>Trending:</span>
-                    <button type="button" onClick={() => setQuery('NVDA')} className="hover:text-primary underline decoration-dotted">NVDA</button>
-                    <button type="button" onClick={() => setQuery('BTC-USD')} className="hover:text-primary underline decoration-dotted">BTC</button>
-                    <button type="button" onClick={() => setQuery('TSLA')} className="hover:text-primary underline decoration-dotted">TSLA</button>
+                    <button type="button" onClick={() => handleSearchChange('NVDA')} className="hover:text-primary underline decoration-dotted">NVDA</button>
+                    <button type="button" onClick={() => handleSearchChange('BTC-USD')} className="hover:text-primary underline decoration-dotted">BTC</button>
+                    <button type="button" onClick={() => handleSearchChange('TSLA')} className="hover:text-primary underline decoration-dotted">TSLA</button>
                 </div>
             </CardContent>
         </Card>

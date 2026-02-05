@@ -21,7 +21,7 @@ from app.services import market_data, search_service
 from app.services.llm_provider import llm_client
 from app.models.analysis import AnalysisResponse
 
-def generate_consensus_analysis(ticker: str, focus_areas: list[str], api_key: str | None = None) -> AnalysisResponse:
+def generate_consensus_analysis(ticker: str, focus_areas: list[str], api_key: str | None = None, base_url: str | None = None, model: str | None = None) -> AnalysisResponse:
     """
     Performs a comprehensive analysis of the given ticker by orchestrating data fetch and AI inference.
     
@@ -35,6 +35,8 @@ def generate_consensus_analysis(ticker: str, focus_areas: list[str], api_key: st
         ticker (str): The asset symbol to analyze.
         focus_areas (list[str]): List of theoretical lenses to apply (e.g., 'Macro', 'Technicals').
         api_key (str | None): User-provided API key for this request session.
+        base_url (str | None): User-provided Base URL for the LLM provider.
+        model (str | None): User-provided model identifier.
         
     Returns:
         AnalysisResponse: A structured object containing the synthesized report and confidence metrics.
@@ -55,7 +57,8 @@ def generate_consensus_analysis(ticker: str, focus_areas: list[str], api_key: st
     
     # 2b. Gather Search Context (News/Sentiment)
     search_query = f"{ticker} stock news analysis sentiment"
-    search_results = search_service.search_web(search_query, max_results=5, ticker=ticker)
+    # Pass ticker to search service if needed for advanced filtering, currently just query
+    search_results = search_service.search_web(search_query, max_results=5)
     
     news_context = "\n".join([
         f"- [{r['title']}]({r['link']}): {r['snippet']}" 
@@ -98,7 +101,7 @@ def generate_consensus_analysis(ticker: str, focus_areas: list[str], api_key: st
     
     # 3. Call AI Model
     # Pass the user's specific API key if provided
-    raw_text = llm_client.generate_analysis(system_prompt, user_prompt, api_key_override=api_key)
+    raw_text = llm_client.generate_analysis(system_prompt, user_prompt, api_key_override=api_key, base_url_override=base_url, model_override=model)
 
     # 4. Parse the customized format
     # This is a naive parser for the prototype. In prod, use JSON mode.

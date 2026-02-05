@@ -19,10 +19,10 @@ logger = logging.getLogger(__name__)
 
 def get_quote(ticker: str) -> dict:
     """
-    Fetches the latest quote for a given ticker symbol.
+    Fetches the latest quote for a given ticker symbol or ISIN code.
 
     Args:
-        ticker (str): The stock symbol (e.g., 'AAPL', 'NVDA').
+        ticker (str): The stock symbol (e.g., 'AAPL', 'NVDA') or ISIN code (e.g., 'HK0000181112').
 
     Returns:
         dict: A dictionary containing:
@@ -37,6 +37,20 @@ def get_quote(ticker: str) -> dict:
     Raises:
         ValueError: If the ticker is invalid or no data is found.
     """
+    from app.database.models import get_ticker_from_isin
+    
+    original_input = ticker
+    
+    # Try to convert ISIN to ticker if needed
+    if len(ticker) == 12 and ticker[:2].isalpha():  # Looks like an ISIN
+        logger.info(f"Detected potential ISIN: {ticker}")
+        converted_ticker = get_ticker_from_isin(ticker)
+        if converted_ticker:
+            logger.info(f"Converted ISIN {ticker} to ticker {converted_ticker}")
+            ticker = converted_ticker
+        else:
+            logger.warning(f"ISIN {ticker} not found in database, trying as-is")
+    
     try:
         # Create Ticker object
         stock = yf.Ticker(ticker)

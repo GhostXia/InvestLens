@@ -10,10 +10,13 @@ This service is responsible for:
 4. Interfacing with Python quantitative libraries (Pandas, NumPy, TA-Lib).
 """
 
+import logging
 from fastapi import FastAPI, HTTPException, Header
 from fastapi.middleware.cors import CORSMiddleware
 from app.services import market_data, consensus
 from app.models.analysis import AnalysisRequest, AnalysisResponse
+
+logger = logging.getLogger(__name__)
 
 # Initialize the FastAPI application with metadata
 app = FastAPI(title="InvestLens Quant Kernel", version="0.1.0")
@@ -51,21 +54,95 @@ def health_check():
     Returns:
         dict: Simple 'ok' status.
     """
-    return {"status": "ok"}
+    return {"message": "InvestLens Quant Kernel is running!", "version": "0.1.0"}
+
+@app.post("/api/v1/models")
+async def get_available_models(request: dict):
+    """
+    Fetch available models from the specified LLM provider endpoint.
+    
+    Args:
+        request (dict): Contains base_url and optional api_key
+        
+    Returns:
+        list: Available models from the provider
+    """
+    from openai import OpenAI
+    
+    try:
+        base_url = request.get("base_url", "https://api.openai.com/v1")
+        api_key = request.get("api_key", "sk-placeholder")
+        
+        logger.info(f"Fetching models from: {base_url}")
+        
+        # Create temporary client
+        client = OpenAI(
+            api_key=api_key,
+            base_url=base_url
+        )
+        
+        # Fetch models
+        models_response = client.models.list()
+        models = [{"id": model.id, "name": model.id} for model in models_response.data]
+        
+        logger.info(f"Found {len(models)} models")
+        return {"models": models}
+        
+    except Exception as e:
+        logger.error(f"Failed to fetch models: {str(e)}")
+        # Return some default models as fallback
+        return {
+            "models": [
+                {"id": "gpt-4", "name": "GPT-4"},
+                {"id": "gpt-3.5-turbo", "name": "GPT-3.5 Turbo"},
+                {"id": "deepseek-chat", "name": "DeepSeek Chat"},
+            ],
+            "error": str(e)
+        }
+
+@app.get("/api/v1/search")
+def search_assets(q: str, limit: int = 10):
+    """
+    Asset Search Endpoint
+    ---------------------
+    Search for assets by ISIN, ticker, or name.
+    Supports autocomplete functionality.
+    
+    Args:
+        q: Search query
+        limit: Maximum results to return
+        
+    Returns:
+        Search results with matching assets
+    """
+    from app.services import asset_search
+    return asset_search.search(q, limit)
+
+@app.get("/api/v1/convert/{identifier}")
+def convert_identifier(identifier: str):
+    """
+    Identifier Conversion Endpoint
+    -------------------------------
+    Converts ISIN to ticker or validates ticker format.
+    
+    Args:
+        identifier: ISIN code or ticker symbol
+        
+    Returns:
+        Conversion result with ticker
+    """
+    from app.services import asset_search
+    return asset_search.convert_to_ticker(identifier)
 
 @app.get("/api/v1/quote/{ticker}")
 def get_market_quote(ticker: str):
     """
     Market Data Endpoint
     --------------------
-    Retrieves the latest quote for the specified ticker.
-    Integration point for the 'Asset Analysis Dashboard'.
+    Fetches real-time (or delayed) quote for a ticker or ISIN.
+    Automatically converts ISIN to ticker if needed.
     
-    Args:
-        ticker (str): The symbol to look up (e.g. AAPL)
-        
-    Returns:
-        dict: The quote data or an error message.
+    Returns basic market info (price, change, etc).
     """
     data = market_data.get_quote(ticker)
     if "error" in data:
@@ -111,7 +188,9 @@ def get_price_prediction(ticker: str, days: int = 7):
 @app.post("/api/v1/analyze", response_model=AnalysisResponse)
 def analyze_asset(
     request: AnalysisRequest,
-    x_llm_api_key: str | None = Header(default=None)
+    x_llm_api_key: str | None = Header(default=None),
+    x_llm_base_url: str | None = Header(default=None),
+    x_llm_model: str | None = Header(default=None)
 ):
     """
     Consensus Analysis Endpoint
@@ -124,15 +203,24 @@ def analyze_asset(
     Args:
         request (AnalysisRequest): Ticker and preferences.
         x_llm_api_key (str, optional): The user's BYO-API key from frontend settings.
+        x_llm_base_url (str, optional): The user's custom Base URL for the LLM provider.
+        x_llm_model (str, optional): The model to use for generation.
         
     Returns:
         AnalysisResponse: The AI report.
     """
     try:
+        logger.info(f"Received analysis request for {request.ticker}")
+        logger.info(f"API Key provided: {bool(x_llm_api_key)}")
+        logger.info(f"Base URL provided: {x_llm_base_url}")
+        logger.info(f"Model provided: {x_llm_model}")
+        
         response = consensus.generate_consensus_analysis(
             ticker=request.ticker,
             focus_areas=request.focus_areas,
-            api_key=x_llm_api_key
+            api_key=x_llm_api_key,
+            base_url=x_llm_base_url,
+            model=x_llm_model
         )
         return response
     except Exception as e:

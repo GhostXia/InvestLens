@@ -35,7 +35,7 @@ class LLMProvider:
             base_url=self.base_url
         )
 
-    def generate_analysis(self, system_prompt: str, user_prompt: str, api_key_override: str = None) -> str:
+    def generate_analysis(self, system_prompt: str, user_prompt: str, api_key_override: str = None, base_url_override: str = None, model_override: str = None) -> str:
         """
         Executes a synchronus generation call to the LLM.
         
@@ -49,28 +49,33 @@ class LLMProvider:
             system_prompt (str): High-level behavioral instructions (Persona, Format Constraints).
             user_prompt (str): The specific task payload (Ticker, Data Context).
             api_key_override (str, optional): A session-specific key to use instead of the env var.
+            base_url_override (str, optional): A session-specific base URL to use instead of the env var.
+            model_override (str, optional): A session-specific model to use instead of the env var.
             
         Returns:
             str: The raw generated text content from the model's response.
         """
         try:
-            logger.info(f"Calling LLM: {self.model} at {self.base_url}")
+            # Determine which base URL and model to use
+            base_url = base_url_override if base_url_override else self.base_url
+            model = model_override if model_override else self.model
+            logger.info(f"Calling LLM: {model} at {base_url}")
             
             # Determine which client/key to use
             client = self.client
-            if api_key_override:
-                # If a user key is provided, we instantiate a temporary client
+            if api_key_override or base_url_override or model_override:
+                # If a user key or base URL is provided, we instantiate a temporary client
                 # This is lightweight enough for the prototype
                 from openai import OpenAI
                 client = OpenAI(
-                    api_key=api_key_override,
-                    base_url=self.base_url
+                    api_key=api_key_override if api_key_override else self.api_key,
+                    base_url=base_url
                 )
             
             # Basic Chat Completion call
             # We use a relatively high max_tokens to ensure full reports are not truncated
             response = client.chat.completions.create(
-                model=self.model,
+                model=model,
                 messages=[
                     {"role": "system", "content": system_prompt},
                     {"role": "user", "content": user_prompt}

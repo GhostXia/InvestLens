@@ -29,7 +29,7 @@ interface AnalysisDashboardProps {
  * @returns {JSX.Element} The dashboard grid layout
  */
 export function AnalysisDashboard({ ticker }: AnalysisDashboardProps) {
-    const { quantModeEnabled } = useSettingsStore()
+    const { quantModeEnabled, apiKey, baseUrl, model } = useSettingsStore()
     const [marketData, setMarketData] = useState<any>(null)
     const [analysis, setAnalysis] = useState<any>(null)
     const [loading, setLoading] = useState(true)
@@ -51,9 +51,18 @@ export function AnalysisDashboard({ ticker }: AnalysisDashboardProps) {
                 setLoading(false) // Header can show now
 
                 // 2. Fetch Consensus Analysis
+                const headers = {
+                    "Content-Type": "application/json",
+                    ...(apiKey && { "X-LLM-API-Key": apiKey }),
+                    ...(baseUrl && { "X-LLM-Base-URL": baseUrl }),
+                    ...(model && { "X-LLM-Model": model })
+                }
+
+                console.log("Sending API request with headers:", { hasApiKey: !!apiKey, hasBaseUrl: !!baseUrl, hasModel: !!model, baseUrl, model })
+
                 const analysisRes = await fetch(getApiUrl("/api/v1/analyze"), {
                     method: "POST",
-                    headers: { "Content-Type": "application/json" },
+                    headers: headers,
                     body: JSON.stringify({
                         ticker: ticker,
                         focus_areas: ["Technical", "Fundamental", "Market Sentiment"]

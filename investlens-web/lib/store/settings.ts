@@ -4,9 +4,11 @@ import { persist } from 'zustand/middleware'
 interface SettingsState {
     apiKey: string
     baseUrl: string
+    model: string
     quantModeEnabled: boolean
     setApiKey: (key: string) => void
     setBaseUrl: (url: string) => void
+    setModel: (model: string) => void
     setQuantModeEnabled: (enabled: boolean) => void
 }
 
@@ -25,9 +27,11 @@ export const useSettingsStore = create<SettingsState>()(
         (set) => ({
             apiKey: "",
             baseUrl: "https://api.openai.com/v1",
+            model: "gpt-4",
             quantModeEnabled: false,
             setApiKey: (key) => set({ apiKey: key }),
             setBaseUrl: (url) => set({ baseUrl: url }),
+            setModel: (model) => set({ model: model }),
             setQuantModeEnabled: (enabled) => set({ quantModeEnabled: enabled }),
         }),
         {
