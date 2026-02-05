@@ -17,7 +17,7 @@ Current State:
 
 import json
 from datetime import datetime
-from app.services import market_data
+from app.services import market_data, search_service
 from app.services.llm_provider import llm_client
 from app.models.analysis import AnalysisResponse
 
@@ -53,6 +53,15 @@ def generate_consensus_analysis(ticker: str, focus_areas: list[str], api_key: st
         "Style: Professional, concise, data-driven. Avoid hedging language like 'I am an AI'."
     )
     
+    # 2b. Gather Search Context (News/Sentiment)
+    search_query = f"{ticker} stock news analysis sentiment"
+    search_results = search_service.search_web(search_query, max_results=5, ticker=ticker)
+    
+    news_context = "\n".join([
+        f"- [{r['title']}]({r['link']}): {r['snippet']}" 
+        for r in search_results
+    ]) if search_results else "No recent news found via search."
+    
     # Inject dynamic context into the user prompt
     user_prompt = f"""
     Analyze the following asset:
@@ -62,6 +71,9 @@ def generate_consensus_analysis(ticker: str, focus_areas: list[str], api_key: st
     **Change**: {quote.get('change')} ({quote.get('change_percent')}%)
     **Focus Areas**: {', '.join(focus_areas)}
     **Time**: {datetime.now().isoformat()}
+
+    **Recent News & Context**:
+    {news_context}
 
     Please provide a structured report with the following sections formatted in Markdown:
     
