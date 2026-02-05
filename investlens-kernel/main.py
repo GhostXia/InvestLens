@@ -22,7 +22,7 @@ app = FastAPI(title="InvestLens Quant Kernel", version="0.1.0")
 # In production, allow_origins should be restricted to the frontend domain
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:3000"],
+    allow_origins=["*"],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],

@@ -180,15 +180,21 @@ export function AnalysisDashboard({ ticker }: AnalysisDashboardProps) {
                         <CardContent className="grid gap-4">
                             <div className="flex justify-between items-center text-sm">
                                 <span className="text-muted-foreground">Volume</span>
-                                <span className="font-mono font-medium">N/A</span>
+                                <span className="font-mono font-medium">
+                                    {marketData?.volume ? (marketData.volume / 1000000).toFixed(2) + "M" : "N/A"}
+                                </span>
                             </div>
                             <div className="flex justify-between items-center text-sm">
                                 <span className="text-muted-foreground">Market Cap</span>
-                                <span className="font-mono font-medium">N/A</span>
+                                <span className="font-mono font-medium">
+                                    {marketData?.market_cap ? (marketData.market_cap / 1000000000).toFixed(2) + "B" : "N/A"}
+                                </span>
                             </div>
                             <div className="flex justify-between items-center text-sm">
                                 <span className="text-muted-foreground">P/E Ratio</span>
-                                <span className="font-mono font-medium">N/A</span>
+                                <span className="font-mono font-medium">
+                                    {marketData?.pe_ratio ? marketData.pe_ratio.toFixed(2) : "N/A"}
+                                </span>
                             </div>
                         </CardContent>
                     </Card>
@@ -201,8 +207,14 @@ export function AnalysisDashboard({ ticker }: AnalysisDashboardProps) {
                             </CardTitle>
                         </CardHeader>
                         <CardContent>
-                            <div className="text-sm text-muted-foreground">
-                                Social sentiment analysis reserved for future expansion.
+                            <div className="text-sm prose dark:prose-invert">
+                                {analysisLoading ? (
+                                    <Skeleton className="h-20 w-full" />
+                                ) : (
+                                    <ReactMarkdown>
+                                        {analysis?.sentiment_analysis || "Sentiment data unavailable."}
+                                    </ReactMarkdown>
+                                )}
                             </div>
                         </CardContent>
                     </Card>

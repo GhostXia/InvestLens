@@ -40,5 +40,7 @@ class AnalysisResponse(BaseModel):
     bullish_case: str = Field(..., description="Arguments for the bullish thesis (Markdown).")
     bearish_case: str = Field(..., description="Arguments for the bearish thesis (Markdown).")
     confidence_score: int = Field(..., ge=0, le=100, description="AI confidence score (0-100).")
-    # For now, we return a single 'consensus' result. 
-    # In the future, this can include individual model outputs.
+    sentiment_analysis: str = Field(
+        default="Sentiment data unavailable.", 
+        description="Analysis of market sentiment (Markdown)."
+    )

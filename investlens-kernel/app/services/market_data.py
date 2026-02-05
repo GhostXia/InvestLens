@@ -60,6 +60,10 @@ def get_quote(ticker: str) -> dict:
              # Note: fast_info handling of name/currency varies, minimal fallback here
              name = ticker.upper() 
              currency = info.currency
+             
+             # Lazy load standard info for extended stats if needed (PE, expensive)
+             # For MVP speed, we might leave PE as None if fast_info works
+             standard_info = {} # Fallback placeholder
 
         # Calculate changes
         # Guard against division by zero or missing previous close
@@ -76,7 +80,10 @@ def get_quote(ticker: str) -> dict:
             "change": round(change, 2),
             "change_percent": round(change_percent, 2),
             "name": name,
-            "currency": currency
+            "currency": currency,
+            "volume": (info.last_volume if info and hasattr(info, 'last_volume') else standard_info.get('volume')) if 'info' in locals() else None,
+            "market_cap": (info.market_cap if info and hasattr(info, 'market_cap') else standard_info.get('marketCap')) if 'info' in locals() else None,
+            "pe_ratio": standard_info.get('trailingPE') if 'standard_info' in locals() and standard_info else None
         }
 
     except Exception as e:

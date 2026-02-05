@@ -68,7 +68,8 @@ def generate_consensus_analysis(ticker: str, focus_areas: list[str], api_key: st
     1. **Executive Summary**: A brief 3-sentence overview of the current setup.
     2. **Bullish Thesis**: 3 key bullet points for the long case.
     3. **Bearish Thesis**: 3 key bullet points for the short/risk case.
-    4. **Confidence Score**: An integer from 0-100 indicating conviction in the analysis availability (not price direction).
+    4. **Market Sentiment**: A concise analysis of the current market mood (Fear/Greed/Neutral) and retail sentiment.
+    5. **Confidence Score**: An integer from 0-100 indicating conviction in the analysis availability.
 
     Response format:
     ---SUMMARY---
@@ -76,6 +77,8 @@ def generate_consensus_analysis(ticker: str, focus_areas: list[str], api_key: st
     ---BULL---
     [Content]
     ---BEAR---
+    [Content]
+    ---SENTIMENT---
     [Content]
     ---SCORE---
     [Integer]
@@ -85,32 +88,6 @@ def generate_consensus_analysis(ticker: str, focus_areas: list[str], api_key: st
     # Pass the user's specific API key if provided
     raw_text = llm_client.generate_analysis(system_prompt, user_prompt, api_key_override=api_key)
 
-def generate_consensus_analysis(ticker: str, focus_areas: list[str], api_key: str = None) -> AnalysisResponse:
-    """
-    Performs a comprehensive analysis of the given ticker by orchestrating data fetch and AI inference.
-    
-    Workflow:
-    1. **Context Gathering**: Fetches real-time price, change, and metadata from `market_data` service.
-    2. **Prompt Engineering**: Constructs a robust prompt with strict Markdown output constraints.
-    3. **Inference**: Delegates to `llm_provider` to query the underlying model (OpenAI/DeepSeek).
-    4. **Parsing**: Validates and structures the raw text output into strongly-typed `AnalysisResponse`.
-    
-    Args:
-        ticker (str): The asset symbol to analyze.
-        focus_areas (list[str]): List of theoretical lenses to apply (e.g., 'Macro', 'Technicals').
-        api_key (str, optional): User-provided API key for this request session.
-        
-    Returns:
-        AnalysisResponse: A structured object containing the synthesized report and confidence metrics.
-    """
-    # ... logic
-    
-    # 3. Call AI Model
-    # Pass the user's specific API key if provided
-    raw_text = llm_client.generate_analysis(system_prompt, user_prompt, api_key_override=api_key)
-    
-    # ... logic
-    
     # 4. Parse the customized format
     # This is a naive parser for the prototype. In prod, use JSON mode.
     try:
@@ -120,9 +97,10 @@ def generate_consensus_analysis(ticker: str, focus_areas: list[str], api_key: st
         parsed = AnalysisResponse(
             ticker=ticker,
             price_context=quote.get('price', 0.0),
-            summary=f"**Analysis Parsin Error**: {str(e)}\n\nRaw Output:\n{raw_text}",
+            summary=f"**Analysis Parsing Error**: {str(e)}\n\nRaw Output:\n{raw_text}",
             bullish_case="N/A",
             bearish_case="N/A",
+            sentiment_analysis="N/A",
             confidence_score=0
         )
 
@@ -135,6 +113,7 @@ def _parse_custom_format(text: str, quote: dict, ticker: str) -> AnalysisRespons
     summary = ""
     bull = ""
     bear = ""
+    sentiment = "Market sentiment is neutral/mixed."
     score = 50
     
     # Simple state machine or split
@@ -149,6 +128,8 @@ def _parse_custom_format(text: str, quote: dict, ticker: str) -> AnalysisRespons
             bull = parts[i+1].strip()
         elif token.startswith("BEAR"):
             bear = parts[i+1].strip()
+        elif token.startswith("SENTIMENT"):
+            sentiment = parts[i+1].strip()
         elif token.startswith("SCORE"):
             try:
                 score_str = parts[i+1].strip()
@@ -170,5 +151,6 @@ def _parse_custom_format(text: str, quote: dict, ticker: str) -> AnalysisRespons
         summary=summary,
         bullish_case=bull,
         bearish_case=bear,
+        sentiment_analysis=sentiment,
         confidence_score=score
     )
