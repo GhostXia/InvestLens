@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react"
 import { Badge } from "@/components/ui/badge"
 import { Activity } from "lucide-react"
+import { getApiUrl } from "@/lib/api-config"
 
 /**
  * SystemStatus Component
@@ -23,11 +24,11 @@ export function SystemStatus() {
     useEffect(() => {
         /**
          * Polling function to hit the backend health endpoint.
-         * Expects a 200 OK from `http://localhost:8000/health`.
+         * Expects a 200 OK from getApiUrl("/health").
          */
         const checkHealth = async () => {
             try {
-                const res = await fetch("http://localhost:8000/health")
+                const res = await fetch(getApiUrl("/health"))
                 if (res.ok) {
                     setStatus("online")
                 } else {

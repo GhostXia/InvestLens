@@ -6,6 +6,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Skeleton } from "@/components/ui/skeleton"
 import { LineChart, ArrowUpRight, ArrowDownRight } from "lucide-react"
+import { getApiUrl } from "@/lib/api-config"
 
 interface PriceChartProps {
     ticker: string
@@ -31,7 +32,7 @@ export function PriceChart({ ticker, quantMode = false }: { ticker: string, quan
             setError(null)
             try {
                 // 1. Fetch History
-                const res = await fetch(`http://localhost:8000/api/v1/market/history/${ticker}?period=${period}`)
+                const res = await fetch(getApiUrl(`/api/v1/market/history/${ticker}?period=${period}`))
                 if (!res.ok) throw new Error("Failed to load chart data")
                 const json = await res.json()
 
@@ -44,7 +45,7 @@ export function PriceChart({ ticker, quantMode = false }: { ticker: string, quan
                 // 2. Fetch Prediction (if Quant Mode is ON)
                 if (quantMode) {
                     try {
-                        const predRes = await fetch(`http://localhost:8000/api/v1/market/prediction/${ticker}?days=7`)
+                        const predRes = await fetch(getApiUrl(`/api/v1/market/prediction/${ticker}?days=7`))
                         const predJson = await predRes.json()
                         if (predJson.predictions) {
                             setPrediction(predJson.predictions)
@@ -143,7 +144,7 @@ export function PriceChart({ ticker, quantMode = false }: { ticker: string, quan
                                         borderRadius: "6px"
                                     }}
                                     itemStyle={{ color: "hsl(var(--foreground))" }}
-                                    formatter={(value: any, name: string) => {
+                                    formatter={(value: any, name: string | undefined) => {
                                         if (typeof value !== 'number') return [value, name]
                                         if (name === "close") return [`$${value.toFixed(2)}`, "Close"]
                                         if (name === "price") return [`$${value.toFixed(2)}`, "Predicted"]

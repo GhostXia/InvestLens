@@ -9,6 +9,7 @@ import { Skeleton } from "@/components/ui/skeleton"
 import { Brain, LineChart, MessageSquare, AlertTriangle } from "lucide-react"
 import ReactMarkdown from 'react-markdown'
 import { useSettingsStore } from "@/lib/store/settings"
+import { getApiUrl } from "@/lib/api-config"
 
 interface AnalysisDashboardProps {
     ticker: string
@@ -42,7 +43,7 @@ export function AnalysisDashboard({ ticker }: AnalysisDashboardProps) {
             setError(null)
             try {
                 // 1. Fetch Market Data
-                const quoteRes = await fetch(`http://localhost:8000/api/v1/quote/${ticker}`)
+                const quoteRes = await fetch(getApiUrl(`/api/v1/quote/${ticker}`))
                 if (!quoteRes.ok) throw new Error("Failed to fetch market data")
                 const quote = await quoteRes.json()
                 if (quote.error) throw new Error(quote.error)
@@ -50,7 +51,7 @@ export function AnalysisDashboard({ ticker }: AnalysisDashboardProps) {
                 setLoading(false) // Header can show now
 
                 // 2. Fetch Consensus Analysis
-                const analysisRes = await fetch("http://localhost:8000/api/v1/analyze", {
+                const analysisRes = await fetch(getApiUrl("/api/v1/analyze"), {
                     method: "POST",
                     headers: { "Content-Type": "application/json" },
                     body: JSON.stringify({
