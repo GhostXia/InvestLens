@@ -1,0 +1,44 @@
+version: '3.8'
+
+services:
+  # Next.js Frontend
+  web:
+    container_name: investlens-web
+    build: 
+      context: ./investlens-web
+      dockerfile: Dockerfile
+    restart: always
+    ports:
+      - "3000:3000"
+    environment:
+      - NODE_ENV=development
+    volumes:
+      - ./investlens-web:/app
+      - /app/node_modules
+    depends_on:
+      - kernel
+      - cache
+
+  # Python Quant Kernel
+  kernel:
+    container_name: investlens-kernel
+    build: 
+      context: ./investlens-kernel
+      dockerfile: Dockerfile
+    restart: always
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./investlens-kernel:/app
+    environment:
+      - REDIS_URL=redis://cache:6379
+    depends_on:
+      - cache
+
+  # Redis Cache
+  cache:
+    container_name: investlens-cache
+    image: redis:alpine
+    restart: always
+    ports:
+      - "6379:6379"
