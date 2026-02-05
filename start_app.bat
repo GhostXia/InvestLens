@@ -1,5 +1,6 @@
 @echo off
 setlocal
+cd /d "%~dp0"
 echo ==========================================
 echo       InvestLens System Launcher
 echo ==========================================
@@ -13,23 +14,34 @@ if %errorlevel% neq 0 (
     exit /b
 )
 
-:: 1. Check and Setup Backend (InvestLens Kernel)
-echo.
-echo [1/2] Checking Backend Environment...
-cd investlens-kernel
+:: 1. Backend Environment Strategy
+:: Priority 1: Root .venv (Global Project Env)
+:: Priority 2: investlens-kernel/venv (Service Specific Env)
 
-if not exist "venv" (
-    echo [SETUP] Virtual environment not found. Creating 'venv'...
-    python -m venv venv
-    
-    echo [SETUP] Installing dependencies...
-    cmd /c "venv\Scripts\activate && pip install -r requirements.txt"
-    
-    echo [SETUP] Backend setup complete!
+set "PYTHON_CMD="
+if exist ".venv\Scripts\activate.bat" (
+    echo [ENV] Found root .venv. Using it.
+    set "VENV_PATH=..\.venv"
+    set "ACTIVATE_CMD=..\.venv\Scripts\activate"
 ) else (
-    echo [OK] Virtual environment found.
+    if exist "investlens-kernel\venv\Scripts\activate.bat" (
+        echo [ENV] Found investlens-kernel\venv. Using it.
+        set "VENV_PATH=venv"
+        set "ACTIVATE_CMD=venv\Scripts\activate"
+    ) else (
+        echo [ENV] No virtual environment found.
+        echo [SETUP] Creating local venv in investlens-kernel...
+        cd investlens-kernel
+        python -m venv venv
+        set "VENV_PATH=venv"
+        set "ACTIVATE_CMD=venv\Scripts\activate"
+        
+        echo [SETUP] Installing dependencies...
+        cmd /c "venv\Scripts\activate && pip install -r requirements.txt"
+        cd ..
+        echo [SETUP] Done.
+    )
 )
-cd ..
 
 :: 2. Check Frontend (InvestLens Web)
 echo.
@@ -50,10 +62,11 @@ echo       Launching Services...
 echo ==========================================
 echo.
 
-:: Launch Backend in new window
-start "InvestLens Kernel" cmd /k "cd investlens-kernel && call venv\Scripts\activate && python -m uvicorn main:app --reload --port 8000"
+:: Launch Backend
+echo Launching Backend with %ACTIVATE_CMD%...
+start "InvestLens Kernel" cmd /k "cd investlens-kernel && call %ACTIVATE_CMD% && python -m uvicorn main:app --reload --port 8000"
 
-:: Launch Frontend in new window
+:: Launch Frontend
 start "InvestLens Web" cmd /k "cd investlens-web && npm run dev"
 
 echo ------------------------------------------
