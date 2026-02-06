@@ -2,201 +2,135 @@
 
 > **Intelligent Investment Decision Support System**
 >
-> *(智能投资决策支持系统)*
->
 > *Real-time Market Data, Multi-Model AI Consensus, and Quantitative Gating.*
 
 **InvestLens** is a modern investment analysis dashboard. It empowers individual investors by combining real-time market data, AI-driven consensus analysis, and quantitative prediction models into a single, interactive interface.
 
-*(InvestLens 是一个现代化投资分析仪表盘。它将实时行情、AI 多视角分析和量化预测模型整合在一个交互式界面中，赋予个人投资者更强的决策能力。)*
+---
+
+## ✨ Features
+
+### 1. Real-time Market Insights
+- **Sub-second Latency**: Fetches real-time price and volatility data via yfinance and AkShare APIs
+- **Multi-Market Support**: US stocks (Yahoo Finance) + China A-shares & Funds (AkShare)
+- **Interactive Charts**: Dynamic charts built with Recharts, supporting 1M/6M/1Y/YTD timeframes
+
+### 2. Multi-Model Consensus Engine
+- **AI-Driven Analysis**: Automatically invokes LLMs (OpenAI, DeepSeek) to generate professional investment reports
+- **Context-Aware Chat**: Floating AI assistant with real-time market data context
+- **Structured Output**: Extracts Bullish/Bearish Thesis and Confidence Score
+
+### 3. Quantitative Prediction (Quant Mode)
+- **Monte Carlo Simulation**: Projects future price paths based on historical volatility
+- **Visual Confidence Bands**: Displays 95% confidence interval for predictions
+- **Safety Gating**: Advanced features gated behind "Quant Mode" toggle with risk disclaimers
+
+### 4. Local-First Security
+- **BYO-API Key**: Users bring their own API keys
+- **Zero-Persistence**: Keys stored only in `localStorage`, passed via headers, no server-side storage
 
 ---
 
-## Features / 功能特性
+## 🛠️ Tech Stack
 
-### 1. Real-time Market Insights (实时市场洞察)
-- **Sub-second Latency**: Fetches real-time price and volatility data via `yfinance` Fast Info API.
-  *(毫秒级行情：通过 yfinance Fast Info 接口获取实时价格波动。)*
-- **Interactive Charts**: Dynamic Area Charts built with Recharts, supporting 1M/6M/1Y/YTD timeframes.
-  *(动态图表：支持多周期切换的交互式 K 线图。)*
-
-### 2. Multi-Model Consensus Engine (多模型共识引擎)
-- **AI-Driven Analysis**: Automatically invokes LLMs (OpenAI, DeepSeek) to generate professional investment reports.
-  *(AI 驱动分析：自动调用大模型生成专业报告。)*
-- **Structured Output**: transforms unstructured reasoning into structured data (Bullish/Bearish Thesis, Confidence Score).
-  *(结构化输出：自动提取看多/看空逻辑和置信度评分。)*
-
-### 3. Quantitative Prediction (量化预测 - Quant Mode)
-- **Monte Carlo Simulation**: Projects future price paths based on historical volatility.
-  *(蒙特卡洛模拟：基于历史波动率预测未来价格路径。)*
-- **Safety Gating**: Advanced features are gated behind a "Quant Mode" toggle with risk disclaimers.
-  *(安全门控：高级功能需开启“量化模式”并签署风险告知后可见。)*
-- **Visual Confidence Bands**: Visualizes the 95% confidence interval for predictions.
-  *(置信区间：可视化展示 95% 概率下的价格波动范围。)*
-
-### 4. Local-First Security (本地优先安全)
-- **BYO-API Key**: Users bring their own API keys.
-- **Zero-Persistence**: Keys are stored only in `localStorage` and passed via headers. No server-side storage.
-  *(零服务端存储：Key 仅存于浏览器本地，不经过后端数据库。)*
+| Layer | Technology |
+|-------|------------|
+| **Frontend** | Next.js 16, React 19, TypeScript, Tailwind CSS |
+| **UI Components** | Radix UI, Shadcn UI, Lucide Icons |
+| **Charts** | Recharts |
+| **State** | Zustand with Persist Middleware |
+| **Backend** | FastAPI, Python 3.10+, Pydantic v2 |
+| **Market Data** | yfinance (US), AkShare (China) |
+| **AI Integration** | OpenAI SDK (compatible with DeepSeek) |
+| **Search** | DuckDuckGo Search API |
+| **Infra** | Docker, Docker Compose |
 
 ---
 
-## Tech Stack / 技术栈
+## 🚀 Quick Start
 
-| Layer | Technology | Details |
-|-------|------------|---------|
-| **Frontend** | Next.js 14 | App Router, TypeScript, Shadcn UI, Tailwind CSS |
-| **State** | Zustand | Persist Middleware for Settings |
-| **Backend** | FastAPI | Python 3.10+, Pydantic v2, AsyncIO |
-| **Data** | yfinance | Real-time & Historical Market Data |
-| **Quant** | NumPy | Monte Carlo Simulation, Volatility Calculation |
-| **Infra** | Docker | Docker Compose for orchestration |
+### Prerequisites
+- Python 3.10+
+- Node.js 18+
+- API Key: OpenAI or DeepSeek (compatible format)
 
----
-
-## Quick Start (Local) / 本地快速开始
-
-### Prerequisites (前置要求)
-- **Python 3.10+**
-- **Node.js 18+**
-- **API Key**: OpenAI or DeepSeek (compatible format).
-
-### 🚀 One-Click Start (Windows)
-We provide a handy batch script to launch both services at once.
-*(我们提供了一个快捷脚本，可同时启动前后端服务。)*
-
+### One-Click Start (Windows)
 Double-click **`start_app.bat`** in the root directory.
 
-*Note: Ensure you have run the installation steps below at least once to create the `venv` and install `node_modules`.*
+### Manual Start
 
-### 1. Start Backend (Kernel)
+**1. Backend**
 ```bash
 cd investlens-kernel
-
-# Create Virtual Env
 python -m venv venv
-
-# Activate (Windows)
-.\venv\Scripts\activate
-# Activate (Mac/Linux)
-# source venv/bin/activate
-
-# Install Deps & Run
+.\venv\Scripts\activate  # Windows
 pip install -r requirements.txt
 python -m uvicorn main:app --reload --port 8000
 ```
-> Backend runs at: `http://localhost:8000`
 
-### 2. Start Frontend (Web)
+**2. Frontend**
 ```bash
 cd investlens-web
 npm install
 npm run dev
 ```
-> Frontend runs at: `http://localhost:3000`
+
+> Backend: `http://localhost:8000` | Frontend: `http://localhost:3000`
 
 ---
 
-## Privacy Data Cleanup / 隐私数据清理
+## 📦 Third-Party Libraries & Attributions
 
-InvestLens provides multiple ways to completely remove all privacy-sensitive data from your system.
-*(InvestLens 提供多种方式完全清除系统中的所有隐私敏感数据。)*
+This project uses the following open-source libraries. We are grateful to their maintainers and contributors.
 
-### Method 1: Settings UI (推荐 - Recommended)
-1. Open the application and navigate to **Settings**
-2. Scroll to the **Danger Zone** section (red card at bottom)
-3. Click **"Clear All Privacy Data"**
-4. Confirm in the dialog
-5. All data will be immediately deleted from both frontend and backend
+### Backend (Python)
 
-### Method 2: Cleanup Script
-We provide standalone scripts for batch cleanup without running the application.
-*(我们提供了独立脚本,无需运行应用即可批量清理。)*
+| Library | License | Description | Source |
+|---------|---------|-------------|--------|
+| [FastAPI](https://fastapi.tiangolo.com/) | MIT | Modern web framework for APIs | [GitHub](https://github.com/tiangolo/fastapi) |
+| [Uvicorn](https://www.uvicorn.org/) | BSD-3-Clause | ASGI server implementation | [GitHub](https://github.com/encode/uvicorn) |
+| [yfinance](https://github.com/ranaroussi/yfinance) | Apache-2.0 | Yahoo Finance market data | [GitHub](https://github.com/ranaroussi/yfinance) |
+| [AkShare](https://akshare.akfamily.xyz/) | MIT | China financial data interface | [GitHub](https://github.com/akfamily/akshare) |
+| [OpenAI Python](https://platform.openai.com/) | MIT | OpenAI API client | [GitHub](https://github.com/openai/openai-python) |
+| [Pandas](https://pandas.pydata.org/) | BSD-3-Clause | Data analysis library | [GitHub](https://github.com/pandas-dev/pandas) |
+| [NumPy](https://numpy.org/) | BSD-3-Clause | Scientific computing | [GitHub](https://github.com/numpy/numpy) |
+| [Pydantic](https://docs.pydantic.dev/) | MIT | Data validation | [GitHub](https://github.com/pydantic/pydantic) |
+| [DuckDuckGo Search](https://pypi.org/project/duckduckgo-search/) | MIT | Search API wrapper | [GitHub](https://github.com/deedy5/duckduckgo_search) |
+| [HTTPX](https://www.python-httpx.org/) | BSD-3-Clause | Async HTTP client | [GitHub](https://github.com/encode/httpx) |
 
-#### Windows:
-```bash
-# Run from project root
-.\clear_privacy_data.bat
-```
+### Frontend (Node.js)
 
-#### Linux/Mac:
-```bash
-# Make executable first (one time only)
-chmod +x clear_privacy_data.sh
+| Library | License | Description | Source |
+|---------|---------|-------------|--------|
+| [Next.js](https://nextjs.org/) | MIT | React framework | [GitHub](https://github.com/vercel/next.js) |
+| [React](https://react.dev/) | MIT | UI library | [GitHub](https://github.com/facebook/react) |
+| [Radix UI](https://www.radix-ui.com/) | MIT | Unstyled accessible components | [GitHub](https://github.com/radix-ui/primitives) |
+| [Tailwind CSS](https://tailwindcss.com/) | MIT | Utility-first CSS | [GitHub](https://github.com/tailwindlabs/tailwindcss) |
+| [Recharts](https://recharts.org/) | MIT | Chart library for React | [GitHub](https://github.com/recharts/recharts) |
+| [Zustand](https://zustand-demo.pmnd.rs/) | MIT | State management | [GitHub](https://github.com/pmndrs/zustand) |
+| [Lucide Icons](https://lucide.dev/) | ISC | Icon library | [GitHub](https://github.com/lucide-icons/lucide) |
+| [React Markdown](https://remarkjs.github.io/react-markdown/) | MIT | Markdown renderer | [GitHub](https://github.com/remarkjs/react-markdown) |
+| [next-themes](https://github.com/pacocoursey/next-themes) | MIT | Theme switching | [GitHub](https://github.com/pacocoursey/next-themes) |
+| [class-variance-authority](https://cva.style/) | Apache-2.0 | CSS variant utility | [GitHub](https://github.com/joe-bell/cva) |
 
-# Run from project root
-./clear_privacy_data.sh
-```
+### UI Component Library
 
-### What Gets Deleted (清理内容)
-- ✅ **Frontend (浏览器本地存储)**:
-  - API Keys and endpoints
-  - Model preferences
-  - Quant Mode settings
-  - All user preferences
-
-- ✅ **Backend (服务器配置文件)**:
-  - Data source configurations (`config/sources.json`)
-  - API endpoint settings
-
-> **⚠️ Warning**: This action is **permanent** and cannot be undone. You will need to reconfigure all settings after cleanup.
-> *(警告：此操作无法撤销,清理后需要重新配置所有设置。)*
+This project uses [shadcn/ui](https://ui.shadcn.com/) components, which are built on top of Radix UI primitives. Shadcn/ui is not a traditional npm package but a collection of reusable components that you copy into your project.
 
 ---
 
-## Deployment / 部署指南
-
-### Option 1: Docker Compose (Recommended)
-This is the easiest way to spin up the entire stack (Frontend + Backend + Redis Cache).
-*(这是最简单的部署方式，一键启动前端、后端和缓存服务。)*
-
-1. **Ensure Docker is installed**.
-2. **Run Compose**:
-   ```bash
-   docker-compose up --build -d
-   ```
-3. **Access**:
-   - Web App: `http://localhost:3000`
-   - API Docs: `http://localhost:8000/docs`
-
-### Option 2: Manual / VPS Deployment
-If you prefer to run services manually or on a standard Linux VPS (Ubuntu/Debian).
-
-#### 1. Backend Service
-```bash
-# In /investlens-kernel
-pip install -r requirements.txt
-nohup python -m uvicorn main:app --host 0.0.0.0 --port 8000 &
-```
-
-#### 2. Frontend Build
-```bash
-# In /investlens-web
-npm run build
-npm start
-# Or use PM2
-pm2 start npm --name "investlens-web" -- start
-```
-
-#### 3. Environment Variables
-- **Frontend**: Create `.env.local` to override defaults if API is on a different domain.
-  `NEXT_PUBLIC_API_URL=http://your-server-ip:8000`
-- **Backend**: Set `REDIS_URL` if using an external Redis instance.
-
----
-
-## Project Structure / 项目结构
+## 📁 Project Structure
 
 ```
 ./InvestLens/
-├── investlens-kernel/      # Python FastAPI Backend (The "Brain")
+├── investlens-kernel/      # Python FastAPI Backend
 │   ├── app/services/       # Core Logic (Market Data, Consensus)
 │   ├── app/models/         # Data Schemas
 │   └── main.py             # API Entrypoint
 │
-├── investlens-web/         # Next.js Frontend (The "Face")
+├── investlens-web/         # Next.js Frontend
 │   ├── app/                # Pages & Routes
-│   ├── components/         # UI Components (Charts, Dashboard)
+│   ├── components/         # UI Components
 │   └── lib/store/          # State Management
 │
 └── docker-compose.yml      # Container Orchestration
@@ -204,11 +138,46 @@ pm2 start npm --name "investlens-web" -- start
 
 ---
 
-## Disclaimer / 免责声明
-**Educational Purpose Only.** InvestLens is a demonstration of AI-assisted financial analysis. It does not constitute financial advice. Predictions are statistical estimates, not guarantees.
+## 🔒 Privacy Data Cleanup
 
-*(本项目仅供教育和研究使用，不构成任何投资建议。市场有风险，投资需谨慎。)*
+InvestLens provides multiple ways to remove all privacy-sensitive data.
+
+### Method 1: Settings UI (Recommended)
+1. Navigate to **Settings** → **Danger Zone**
+2. Click **"Clear All Privacy Data"**
+3. Confirm in the dialog
+
+### Method 2: Cleanup Script
+```bash
+# Windows
+.\clear_privacy_data.bat
+
+# Linux/Mac
+chmod +x clear_privacy_data.sh && ./clear_privacy_data.sh
+```
 
 ---
 
+## 🐳 Deployment
 
+### Docker Compose (Recommended)
+```bash
+docker-compose up --build -d
+```
+- Web App: `http://localhost:3000`
+- API Docs: `http://localhost:8000/docs`
+
+### Manual Deployment
+See [DEPLOYMENT.md](./DEPLOYMENT.md) for detailed instructions.
+
+---
+
+## ⚠️ Disclaimer
+
+**Educational Purpose Only.** InvestLens is a demonstration of AI-assisted financial analysis. It does not constitute financial advice. Predictions are statistical estimates, not guarantees. Market investments carry risk.
+
+---
+
+## 📄 License
+
+This project is licensed under the MIT License. See individual library licenses above for third-party dependencies.
