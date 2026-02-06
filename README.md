@@ -79,7 +79,8 @@
           ↓                   ↓                   ↓
     ┌──────────┐       ┌──────────┐       ┌──────────┐
     │ yfinance │       │  AkShare │       │  OpenAI  │
-    │   (US)   │       │ (China)  │       │ DeepSeek │
+    │ US/HK/🌐 │       │ A股/基金 │       │ DeepSeek │
+    │  Crypto  │       │  ETF/债  │       │  Ollama  │
     └──────────┘       └──────────┘       └──────────┘
 ```
 
