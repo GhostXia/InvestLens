@@ -199,7 +199,8 @@ def analyze_asset(
     request: AnalysisRequest,
     x_llm_api_key: str | None = Header(default=None),
     x_llm_base_url: str | None = Header(default=None),
-    x_llm_model: str | None = Header(default=None)
+    x_llm_model: str | None = Header(default=None),
+    x_quant_mode: str | None = Header(default=None, alias="X-Quant-Mode")
 ):
     """
     Consensus Analysis Endpoint
@@ -224,12 +225,15 @@ def analyze_asset(
         logger.info(f"Base URL provided: {x_llm_base_url}")
         logger.info(f"Model provided: {x_llm_model}")
         
+        quant_mode_enabled = x_quant_mode == "true"
+        
         response = consensus.generate_consensus_analysis(
             ticker=request.ticker,
             focus_areas=request.focus_areas,
             api_key=x_llm_api_key,
             base_url=x_llm_base_url,
-            model=x_llm_model
+            model=x_llm_model,
+            quant_mode=quant_mode_enabled
         )
         return response
     except Exception as e:

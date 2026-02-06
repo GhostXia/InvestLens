@@ -214,7 +214,7 @@ export function AnalysisDashboard({ ticker }: AnalysisDashboardProps) {
                         <CardHeader>
                             <CardTitle className="text-base flex items-center gap-2 text-primary">
                                 <MessageSquare className="h-4 w-4" />
-                                Analyst Advice / 分析师建议
+                                Analyst Advice
                             </CardTitle>
                         </CardHeader>
                         <CardContent>
