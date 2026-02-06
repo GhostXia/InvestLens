@@ -48,6 +48,14 @@ def generate_consensus_analysis(ticker: str, focus_areas: list[str], api_key: st
     # If this fails, we let the exception propagate to the API layer (500 Error)
     quote = market_data.get_quote(ticker)
     
+    # 1b. Fetch Financials (Best effort)
+    financials = market_data.get_financials(ticker)
+    fin_context = "\n".join([f"- **{k}**: {v}" for k, v in financials.items()]) if financials else "No recent financial data available."
+
+    # 1c. Fetch Macro Context
+    macro = market_data.get_market_context()
+    macro_context = ", ".join([f"{k}: {v}" for k, v in macro.items()])
+
     # 2. Construct the Prompt
     # We use a structured system prompt to force Markdown output
     # The 'Persona' is defined here as an advanced quantitative analyst
@@ -75,8 +83,12 @@ def generate_consensus_analysis(ticker: str, focus_areas: list[str], api_key: st
     **Asset**: {quote.get('symbol')} ({quote.get('name')})
     **Current Price**: {quote.get('price')} {quote.get('currency')}
     **Change**: {quote.get('change')} ({quote.get('change_percent')}%)
+    **Market Context**: {macro_context}
     **Focus Areas**: {', '.join(focus_areas)}
     **Time**: {datetime.now().isoformat()}
+
+    **Financial Snapshot**:
+    {fin_context}
 
     **Recent News & Context**:
     {news_context}

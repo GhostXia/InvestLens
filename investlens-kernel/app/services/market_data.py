@@ -12,108 +12,97 @@ Key Responsibilities:
 """
 
 # pyre-ignore[21]: yfinance installed but not found by IDE
+# pyre-ignore[21]: yfinance installed but not found by IDE
 import yfinance as yf
 import logging
+from typing import List, Optional, Any
+# pyre-ignore[21]: relative import
+from .providers.base import BaseDataProvider
+# pyre-ignore[21]: relative import
+from .providers.alpha_vantage import AlphaVantageProvider
+# pyre-ignore[21]: relative import
+from .providers.yfinance_impl import YFinanceProvider
+# pyre-ignore[21]: relative import
+from .config_manager import config_manager
+# pyre-ignore[21]: relative import
+from .config_manager import config_manager
 
 # Configure logger
 logger = logging.getLogger(__name__)
 
+# Initialize Providers
+_providers: List[BaseDataProvider] = []
+
+def reload_providers():
+    """
+    Re-initializes the provider list based on the configuration manager.
+    """
+    global _providers
+    _providers = []
+    
+    # Load dynamic sources
+    sources = config_manager.load_data_sources()
+    
+    alpha_vantage_added = False
+    
+    # Add Configured Providers
+    for source in sources:
+        if not source.get("enabled", True):
+            continue
+            
+        if source["provider_type"] == "alpha_vantage":
+            key = source.get("api_key")
+            if key:
+                _providers.append(AlphaVantageProvider(api_key=key))
+                alpha_vantage_added = True
+
+    # Legacy Fallback: If no dynamic AV config, try env var
+    if not alpha_vantage_added:
+        av_env = AlphaVantageProvider()
+        if av_env.api_key:
+            _providers.append(av_env)
+
+    # Add YFinance (Always enabled fallback)
+    _providers.append(YFinanceProvider())
+    
+    logger.info(f"Providers reloaded. Active: {[type(p).__name__ for p in _providers]}")
+
+# Initial load
+reload_providers()
+
+
 def get_quote(ticker: str) -> dict:
     """
-    Fetches the latest quote for a given ticker symbol or ISIN code.
-
-    Args:
-        ticker (str): The stock symbol (e.g., 'AAPL', 'NVDA') or ISIN code (e.g., 'HK0000181112').
-
-    Returns:
-        dict: A dictionary containing:
-            - symbol (str): The uppercase ticker.
-            - price (float): Current market price.
-            - change (float): Price change (absolute).
-            - change_percent (float): Price change (percentage).
-            - volume (int): Trading volume.
-            - name (str): Short name of the asset.
-            - currency (str): Currency code (e.g., 'USD').
-    
-    Raises:
-        ValueError: If the ticker is invalid or no data is found.
+    Fetches the latest quote using available providers.
     """
     # pyre-ignore[21]: Import exists
     from ..database.models import get_ticker_from_isin
     
-    original_input = ticker
-    
-    # Try to convert ISIN to ticker if needed
+    # ISIN Logic
     # pyre-ignore[16]: Pyre string slicing check
-    if len(ticker) == 12 and ticker[:2].isalpha():  # Looks like an ISIN
-        logger.info(f"Detected potential ISIN: {ticker}")
-        converted_ticker = get_ticker_from_isin(ticker)
-        if converted_ticker:
-            logger.info(f"Converted ISIN {ticker} to ticker {converted_ticker}")
-            ticker = converted_ticker
-        else:
-            logger.warning(f"ISIN {ticker} not found in database, trying as-is")
+    if len(ticker) == 12 and ticker[:2].isalpha():
+        converted = get_ticker_from_isin(ticker)
+        if converted:
+            ticker = converted
+
+    error_details = []
     
-    try:
-        # Create Ticker object
-        stock = yf.Ticker(ticker)
-        
-        # Fast info fetch (more reliable for real-time than .info)
-        info = stock.fast_info
-        
-        if not info or not hasattr(info, 'last_price'):
-             # Fallback to standard info if fast_info fails
-             standard_info = stock.info
-             if not standard_info or 'currentPrice' not in standard_info:
-                 raise ValueError(f"No data found for ticker: {ticker}")
-             
-             price = float(standard_info.get('currentPrice'))
-             previous_close = float(standard_info.get('previousClose')) if standard_info.get('previousClose') else None
-             name = standard_info.get('shortName', ticker)
-             currency = standard_info.get('currency', 'USD')
-        else:
-             price = float(info.last_price)
-             previous_close = float(info.previous_close) if info.previous_close else None
-             # Note: fast_info handling of name/currency varies, minimal fallback here
-             name = ticker.upper() 
-             currency = info.currency
-             
-             # Lazy load standard info for extended stats if needed (PE, expensive)
-             # For MVP speed, we might leave PE as None if fast_info works
-             standard_info = {} # Fallback placeholder
+    for provider in _providers:
+        try:
+            quote = provider.get_quote(ticker)
+            if quote:
+                return quote
+        except Exception as e:
+            error_details.append(f"{type(provider).__name__}: {str(e)}")
+            continue
 
-        # Calculate changes
-        # Guard against division by zero or missing previous close
-        if previous_close:
-            change = price - previous_close
-            change_percent = (change / previous_close) * 100
-        else:
-            change = 0.0
-            change_percent = 0.0
-
-        return {
-            "symbol": ticker.upper(),
-            # pyre-ignore[6]: Rounding float is valid
-            "price": round(price, 2),
-            # pyre-ignore[6]: Rounding float is valid
-            "change": round(change, 2),
-            # pyre-ignore[6]: Rounding float is valid
-            "change_percent": round(change_percent, 2),
-            "name": name,
-            "currency": currency,
-            "volume": (info.last_volume if info and hasattr(info, 'last_volume') else standard_info.get('volume')) if 'info' in locals() else None,
-            "market_cap": (info.market_cap if info and hasattr(info, 'market_cap') else standard_info.get('marketCap')) if 'info' in locals() else None,
-            "pe_ratio": standard_info.get('trailingPE') if 'standard_info' in locals() and standard_info else None
-        }
-
-    except Exception as e:
-        logger.error(f"Error fetching quote for {ticker}: {str(e)}")
-        # In production, custom exceptions should be used
-        return {
-            "symbol": ticker.upper(),
-            "error": "Data Unavailable",
-            "details": str(e)
-        }
+    # If we get here, all providers failed
+    logger.error(f"All providers failed for {ticker}: {error_details}")
+    return {
+        "symbol": str(ticker).upper(),
+        "error": "Data Unavailable",
+        "details": "; ".join(error_details)
+    }
 
 def get_historical_data(ticker: str, period: str = "6mo", interval: str = "1d") -> dict:
     """
@@ -219,3 +208,36 @@ def get_prediction(ticker: str, days: int = 7) -> dict:
         }
     except Exception as e:
         return {"error": str(e)}
+
+def get_financials(ticker: str) -> dict:
+    """
+    Fetches key financial metrics using available providers.
+    """
+    for provider in _providers:
+        try:
+            data = provider.get_financials(ticker)
+            if data:
+                return data
+        except Exception:
+            continue
+    return {}
+
+def get_market_context() -> dict:
+    """
+    Fetches broad market indicators.
+    """
+    # For context, we can try to merge logic or just take the first success.
+    # YFinance is specifically good for this (VIX, etc), AV might be limited.
+    # We'll try all, but YFinance implemented it well.
+    for provider in _providers:
+        try:
+            context = provider.get_market_context()
+            if context and "Data Unavailable" not in str(context.values()):
+                 # Heuristic: if we got real data, return it
+                 return context
+        except Exception:
+            continue
+            
+    # Fallback if preferred providers failed, try to return whatever we got
+    # (Or just return empty to fail gracefully)
+    return {}

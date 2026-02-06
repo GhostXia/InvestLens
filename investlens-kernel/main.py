@@ -11,9 +11,15 @@ This service is responsible for:
 """
 
 import logging
+# pyre-ignore[21]: fastapi installed but not found
 from fastapi import FastAPI, HTTPException, Header
+# pyre-ignore[21]: fastapi installed but not found
 from fastapi.middleware.cors import CORSMiddleware
+# pyre-ignore[21]: app.services not found
 from app.services import market_data, consensus
+# pyre-ignore[21]: app.routers not found
+from app.routers import config
+# pyre-ignore[21]: app.models not found
 from app.models.analysis import AnalysisRequest, AnalysisResponse
 
 logger = logging.getLogger(__name__)
@@ -67,6 +73,7 @@ async def get_available_models(request: dict):
     Returns:
         list: Available models from the provider
     """
+    # pyre-ignore[21]: openai installed but not found
     from openai import OpenAI
     
     try:
@@ -115,6 +122,7 @@ def search_assets(q: str, limit: int = 10):
     Returns:
         Search results with matching assets
     """
+    # pyre-ignore[21]: app.services not found
     from app.services import asset_search
     return asset_search.search(q, limit)
 
@@ -131,6 +139,7 @@ def convert_identifier(identifier: str):
     Returns:
         Conversion result with ticker
     """
+    # pyre-ignore[21]: app.services not found
     from app.services import asset_search
     return asset_search.convert_to_ticker(identifier)
 
@@ -225,4 +234,6 @@ def analyze_asset(
         return response
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
+
+app.include_router(config.router)
 

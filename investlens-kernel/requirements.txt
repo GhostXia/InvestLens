@@ -9,3 +9,4 @@ yfinance>=0.2.36
 # ta-lib
 openai>=1.10.0
 duckduckgo-search>=4.4.0
+requests>=2.31.0

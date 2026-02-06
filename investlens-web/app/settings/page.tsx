@@ -16,7 +16,8 @@ import {
     DialogHeader,
     DialogTitle,
 } from "@/components/ui/dialog"
-import { Brain, Lock, ShieldAlert } from "lucide-react"
+import { Brain, Lock, ShieldAlert, Database } from "lucide-react"
+import { DataSourceEditor } from "@/components/settings/DataSourceEditor"
 
 /**
  * Settings Page
@@ -216,6 +217,9 @@ export default function SettingsPage() {
                         </div>
                     </CardContent>
                 </Card>
+
+                {/* Data Sources Section */}
+                <DataSourceEditor />
 
                 {/* Quant Mode Section */}
                 <Card className={`border-l-4 ${quantModeEnabled ? 'border-l-red-500' : 'border-l-gray-300'}`}>

@@ -1,0 +1,112 @@
+# pyre-ignore[21]: yfinance installed but not found by IDE
+import yfinance as yf
+import logging
+from typing import Dict, Any, Optional
+# pyre-ignore[21]: relative import
+from .base import BaseDataProvider
+
+logger = logging.getLogger(__name__)
+
+class YFinanceProvider(BaseDataProvider):
+    """
+    Data provider using yfinance library.
+    Acts as the robust fallback or primary for free data.
+    """
+
+    def get_quote(self, ticker: str) -> Optional[Dict[str, Any]]:
+        try:
+            stock = yf.Ticker(ticker)
+            # pyre-ignore[16]: fast_info dynamic attribute
+            info = stock.fast_info
+            
+            # Fallback logic similar to original market_data.py
+            if not info or not hasattr(info, 'last_price'):
+                 standard_info = stock.info
+                 if not standard_info or 'currentPrice' not in standard_info:
+                     return None
+                 
+                 price = float(standard_info.get('currentPrice'))
+                 previous_close = float(standard_info.get('previousClose')) if standard_info.get('previousClose') else None
+                 name = standard_info.get('shortName', ticker)
+                 currency = standard_info.get('currency', 'USD')
+            else:
+                 price = float(info.last_price)
+                 previous_close = float(info.previous_close) if info.previous_close else None
+                 name = ticker.upper() 
+                 currency = info.currency
+
+            if previous_close:
+                change = price - previous_close
+                change_percent = (change / previous_close) * 100
+            else:
+                change = 0.0
+                change_percent = 0.0
+
+            return {
+                "symbol": ticker.upper(),
+                # pyre-ignore[6]: Rounding float
+                "price": round(price, 2),
+                # pyre-ignore[6]: Rounding float
+                "change": round(change, 2),
+                # pyre-ignore[6]: Rounding float
+                "change_percent": round(change_percent, 2),
+                "name": name,
+                "currency": currency
+            }
+        except Exception as e:
+            logger.error(f"YFinance quote failed: {e}")
+            return None
+
+    def get_financials(self, ticker: str) -> Dict[str, str]:
+        try:
+            stock = yf.Ticker(ticker)
+            # pyre-ignore[16]: dynamic attribute
+            fin = stock.financials
+            
+            if fin is None or fin.empty:
+                return {}
+                
+            data = {}
+            target_metrics = ["Total Revenue", "Net Income", "Gross Profit", "Operating Income"]
+            
+            for metric in target_metrics:
+                try:
+                    if metric in fin.index:
+                        val = fin.loc[metric].iloc[0]
+                        if val > 1_000_000_000:
+                            val_str = f"{val/1_000_000_000:.2f}B"
+                        elif val > 1_000_000:
+                            val_str = f"{val/1_000_000:.2f}M"
+                        else:
+                            val_str = str(val)
+                        data[metric] = val_str
+                except Exception:
+                    continue
+            return data
+        except Exception as e:
+            logger.error(f"YFinance financials failed: {e}")
+            return {}
+
+    def get_market_context(self) -> Dict[str, str]:
+        context = {}
+        indices = {
+            "SPY": "S&P 500 ETF",
+            "^VIX": "Volatility Index"
+        }
+        
+        try:
+            for symbol, name in indices.items():
+                try:
+                    tick = yf.Ticker(symbol)
+                    # pyre-ignore[16]: fast_info dynamic attribute
+                    info = tick.fast_info
+                    if hasattr(info, 'last_price') and hasattr(info, 'previous_close'):
+                        price = info.last_price
+                        prev = info.previous_close
+                        change_pct = ((price - prev) / prev) * 100 if prev else 0.0
+                        context[name] = f"{price:.2f} ({change_pct:+.2f}%)"
+                except Exception:
+                    context[name] = "Data Unavailable"
+            return context
+        except Exception as e:
+            return context
