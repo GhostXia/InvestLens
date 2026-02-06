@@ -36,6 +36,11 @@ class AkShareProvider(BaseDataProvider):
         self._stock_cache: Optional[Any] = None
         self._cache_time: Optional[datetime] = None
         self._cache_ttl = 60  # Cache for 60 seconds
+        
+        # Cache for code-name mapping (cache for longer, e.g. 24 hours)
+        self._code_name_map: Optional[Any] = None
+        self._code_name_cache_time: Optional[datetime] = None
+        self._code_name_ttl = 3600 * 24
 
     def _get_realtime_data(self) -> Any:
         """Get real-time A-share data with caching."""
@@ -52,6 +57,29 @@ class AkShareProvider(BaseDataProvider):
             return self._stock_cache
         except Exception as e:
             logger.error(f"Failed to fetch real-time data: {e}")
+            return None
+
+    def _get_code_name_map(self) -> Optional[Dict[str, str]]:
+        """Get code-name mapping with long-term caching."""
+        import akshare as ak
+        
+        now = datetime.now()
+        if self._code_name_map is not None and self._code_name_cache_time is not None:
+            if (now - self._code_name_cache_time).seconds < self._code_name_ttl:
+                return self._code_name_map
+        
+        try:
+            # Fetch all codes and names
+            df = ak.stock_info_a_code_name()
+            if df is not None and not df.empty:
+                # Convert to dictionary for fast lookup {code: name}
+                code_name_map = dict(zip(df['code'], df['name']))
+                self._code_name_map = code_name_map
+                self._code_name_cache_time = now
+                return code_name_map
+            return None
+        except Exception as e:
+            logger.warning(f"Failed to fetch code-name map: {e}")
             return None
 
     def get_quote(self, ticker: str) -> Optional[Dict[str, Any]]:
@@ -119,12 +147,18 @@ class AkShareProvider(BaseDataProvider):
                         change_pct = float(latest['涨跌幅']) if '涨跌幅' in latest else 0.0
                         change = float(latest['涨跌额']) if '涨跌额' in latest else 0.0
                         
+                        # Try to get the real name from our detailed map
+                        stock_name = ticker
+                        name_map = self._get_code_name_map()
+                        if name_map and ticker in name_map:
+                             stock_name = name_map[ticker]
+
                         return {
                             "symbol": ticker,
                             "price": round(price, 2),
                             "change": round(change, 2),
                             "change_percent": round(change_pct, 2),
-                            "name": ticker, # We might miss the name in fallback, that's acceptable
+                            "name": stock_name, 
                             "currency": "CNY",
                             "volume": int(latest['成交量']),
                             "data_source": "akshare_delayed"

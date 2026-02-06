@@ -28,3 +28,6 @@ htmlcov/
 
 # Docker
 docker-data/
+
+# Security
+investlens-kernel/config/sources.json

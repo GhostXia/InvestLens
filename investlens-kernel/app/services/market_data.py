@@ -111,9 +111,14 @@ def get_quote(ticker: str) -> dict:
     error_details = []
     
     # For China A-share tickers, try AkShare first
-    if _is_china_ticker(ticker) and _akshare_provider:
+    # Handle suffixed tickers (e.g. 603986.SS) by stripping suffix for AkShare
+    clean_ticker = ticker
+    if ticker.endswith(('.SS', '.SZ', '.ss', '.sz')):
+        clean_ticker = ticker[:-3]
+
+    if _is_china_ticker(clean_ticker) and _akshare_provider:
         try:
-            quote = _akshare_provider.get_quote(ticker)
+            quote = _akshare_provider.get_quote(clean_ticker)
             if quote:
                 return quote
         except Exception as e:

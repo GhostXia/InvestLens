@@ -62,8 +62,17 @@ export function TickerHeader({
         )
     }
 
+    // Auto-detect currency for Chinese stocks if not explicitly set to something else likely
+    // Common patterns: 6 digits (A-share code usually), or suffixes .SS, .SZ
+    const isChineseStock = /^\d{6}$|(\.SS|\.SZ)$/i.test(symbol)
+    const effectiveCurrency = isChineseStock && (currency === "USD" || !currency) ? "CNY" : currency
+    const currencySymbol = effectiveCurrency === "CNY" ? "¥" : effectiveCurrency === "USD" ? "$" : ""
+
+    // Prioritize name for display
+    const displayName = name || symbol
+    // For Chinese stocks, user prefers just the code (e.g. 603986) without suffix as subtitle
+    const displaySymbol = name ? (isChineseStock ? symbol.split('.')[0] : symbol) : ""
     const isPositive = change >= 0
-    const currencySymbol = currency === "CNY" ? "¥" : currency === "USD" ? "$" : ""
 
     // Format large numbers
     const formatNumber = (num?: number) => {
@@ -85,7 +94,7 @@ export function TickerHeader({
                     </div>
                     <div>
                         <div className="flex items-center gap-2">
-                            <h1 className="text-3xl font-bold tracking-tight">{symbol}</h1>
+                            <h1 className="text-3xl font-bold tracking-tight">{displayName}</h1>
                             {dataSource && (
                                 <Badge variant="outline" className={`text-xs ${dataSource.includes("akshare")
                                     ? "border-red-500/50 text-red-600 dark:text-red-400"
@@ -97,7 +106,7 @@ export function TickerHeader({
                                 </Badge>
                             )}
                         </div>
-                        <p className="text-muted-foreground font-medium">{name}</p>
+                        {displaySymbol && <p className="text-muted-foreground font-medium">{displaySymbol}</p>}
                     </div>
                 </div>
 
@@ -106,7 +115,7 @@ export function TickerHeader({
                         <span className="text-4xl font-extrabold tracking-tight">
                             {currencySymbol}{price?.toFixed(2)}
                         </span>
-                        <span className="text-sm text-muted-foreground font-medium">{currency}</span>
+                        <span className="text-sm text-muted-foreground font-medium">{effectiveCurrency}</span>
                     </div>
                     <Badge
                         variant={isPositive ? "default" : "destructive"}

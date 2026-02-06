@@ -1,6 +1,6 @@
 [
     {
-        "name": "New Alpha Vantage",
+        "name": "Alpha Vantage",
         "provider_type": "alpha_vantage",
         "api_key": "YOUR_API_KEY_HERE",
         "endpoint_override": "",
