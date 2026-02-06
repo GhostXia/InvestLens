@@ -8,12 +8,14 @@ interface SettingsState {
     quantModeEnabled: boolean
     ddgEnabled: boolean
     yahooEnabled: boolean
+    akshareEnabled: boolean
     setApiKey: (key: string) => void
     setBaseUrl: (url: string) => void
     setModel: (model: string) => void
     setQuantModeEnabled: (enabled: boolean) => void
     setDdgEnabled: (enabled: boolean) => void
     setYahooEnabled: (enabled: boolean) => void
+    setAkshareEnabled: (enabled: boolean) => void
     clearAll: () => void
 }
 
@@ -36,19 +38,22 @@ export const useSettingsStore = create<SettingsState>()(
             quantModeEnabled: false,
             ddgEnabled: false,
             yahooEnabled: true,
+            akshareEnabled: true,
             setApiKey: (key) => set({ apiKey: key }),
             setBaseUrl: (url) => set({ baseUrl: url }),
             setModel: (model) => set({ model: model }),
             setQuantModeEnabled: (enabled) => set({ quantModeEnabled: enabled }),
             setDdgEnabled: (enabled) => set({ ddgEnabled: enabled }),
             setYahooEnabled: (enabled) => set({ yahooEnabled: enabled }),
+            setAkshareEnabled: (enabled) => set({ akshareEnabled: enabled }),
             clearAll: () => set({
                 apiKey: "",
                 baseUrl: "https://api.openai.com/v1",
                 model: "gpt-4",
                 quantModeEnabled: false,
                 ddgEnabled: false,
-                yahooEnabled: true
+                yahooEnabled: true,
+                akshareEnabled: true
             }),
         }),
         {

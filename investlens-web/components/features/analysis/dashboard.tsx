@@ -108,6 +108,11 @@ export function AnalysisDashboard({ ticker }: AnalysisDashboardProps) {
                 changePercent={marketData?.change_percent}
                 name={marketData?.name}
                 currency={marketData?.currency}
+                dataSource={marketData?.data_source}
+                volume={marketData?.volume}
+                marketCap={marketData?.market_cap}
+                peRatio={marketData?.pe_ratio}
+                turnoverRate={marketData?.turnover_rate}
             />
 
             {/* 2. Main Content Grid */}

@@ -27,7 +27,7 @@ import { DataSourceEditor } from "@/components/settings/DataSourceEditor"
  * 2. Quant Mode (High-risk features)
  */
 export default function SettingsPage() {
-    const { apiKey, setApiKey, baseUrl, setBaseUrl, model, setModel, quantModeEnabled, setQuantModeEnabled, ddgEnabled, setDdgEnabled, yahooEnabled, setYahooEnabled, clearAll } = useSettingsStore()
+    const { apiKey, setApiKey, baseUrl, setBaseUrl, model, setModel, quantModeEnabled, setQuantModeEnabled, ddgEnabled, setDdgEnabled, yahooEnabled, setYahooEnabled, akshareEnabled, setAkshareEnabled, clearAll } = useSettingsStore()
     const [showRiskDialog, setShowRiskDialog] = useState(false)
     const [showClearDialog, setShowClearDialog] = useState(false)
     const [clearing, setClearing] = useState(false)
@@ -283,8 +283,20 @@ export default function SettingsPage() {
                                 onCheckedChange={setYahooEnabled}
                             />
                         </div>
+                        <div className="flex items-center justify-between py-2">
+                            <div className="space-y-0.5">
+                                <Label className="text-base">AkShare (China)</Label>
+                                <p className="text-sm text-muted-foreground">
+                                    A股、基金，支持中文搜索
+                                </p>
+                            </div>
+                            <Switch
+                                checked={akshareEnabled}
+                                onCheckedChange={setAkshareEnabled}
+                            />
+                        </div>
                         <p className="text-xs text-muted-foreground pt-2 border-t">
-                            Results from each provider will be labeled (DDG / Yahoo).
+                            Results from each provider will be labeled (DDG / Yahoo / AkShare).
                         </p>
                     </CardContent>
                 </Card>

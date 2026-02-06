@@ -62,7 +62,7 @@ export function AssetInput() {
             setLoading(true)
             try {
                 // Get enabled search providers from store
-                const { ddgEnabled, yahooEnabled } = useSettingsStore.getState()
+                const { ddgEnabled, yahooEnabled, akshareEnabled } = useSettingsStore.getState()
 
                 // Build list of fetch promises based on enabled providers
                 const fetchPromises: Promise<Response>[] = [
@@ -79,6 +79,11 @@ export function AssetInput() {
                 if (yahooEnabled) {
                     fetchPromises.push(
                         fetch(getApiUrl(`/search/suggestions?query=${encodeURIComponent(value)}&provider=yahoo`))
+                    )
+                }
+                if (akshareEnabled) {
+                    fetchPromises.push(
+                        fetch(getApiUrl(`/search/suggestions?query=${encodeURIComponent(value)}&provider=akshare`))
                     )
                 }
 
@@ -101,6 +106,12 @@ export function AssetInput() {
                 if (yahooEnabled && responses[responseIndex]) {
                     const yahooData = responses[responseIndex].ok ? await responses[responseIndex].json() : { suggestions: [] }
                     allSuggestions = [...allSuggestions, ...(yahooData.suggestions || [])]
+                    responseIndex++
+                }
+
+                if (akshareEnabled && responses[responseIndex]) {
+                    const akshareData = responses[responseIndex].ok ? await responses[responseIndex].json() : { suggestions: [] }
+                    allSuggestions = [...allSuggestions, ...(akshareData.suggestions || [])]
                 }
 
                 // Combine: Asset search results first, then all provider suggestions
@@ -120,8 +131,8 @@ export function AssetInput() {
             setQuery(item.ticker)
             handleSearchChange(item.ticker)
             // Keep dropdown open to show search results
-        } else if (item.isYahoo) {
-            // For Yahoo Finance suggestions: navigate directly (valid ticker)
+        } else if (item.isYahoo || item.isAkshare) {
+            // For Yahoo Finance or AkShare suggestions: navigate directly (valid ticker)
             setQuery(item.ticker)
             setShowResults(false)
             router.push(`/analysis?ticker=${encodeURIComponent(item.ticker)}`)
@@ -196,6 +207,11 @@ export function AssetInput() {
                                     ) : item.isYahoo ? (
                                         <>
                                             <div className="text-xs font-mono bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-300 px-1.5 py-0.5 rounded">Yahoo</div>
+                                            <div className="text-[10px] text-muted-foreground mt-0.5">{item.exchange}</div>
+                                        </>
+                                    ) : item.isAkshare ? (
+                                        <>
+                                            <div className="text-xs font-mono bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-300 px-1.5 py-0.5 rounded">AkShare</div>
                                             <div className="text-[10px] text-muted-foreground mt-0.5">{item.exchange}</div>
                                         </>
                                     ) : (

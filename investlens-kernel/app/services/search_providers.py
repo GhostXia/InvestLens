@@ -3,22 +3,28 @@ Search Providers Service
 ========================
 
 Provides multiple search suggestion providers for autocomplete functionality.
-Supports DuckDuckGo (general search) and Yahoo Finance (financial data).
+Supports DuckDuckGo (general search), Yahoo Finance (financial data), and AkShare (China market).
 """
 
 from enum import Enum
 from typing import List, Dict, Any
 import logging
+import asyncio
+from concurrent.futures import ThreadPoolExecutor
 # pyre-ignore[21]: httpx installed but not found
 import httpx
 
 logger = logging.getLogger(__name__)
+
+# Thread pool for running sync akshare functions
+_executor = ThreadPoolExecutor(max_workers=2)
 
 
 class SearchProvider(str, Enum):
     """Available search providers"""
     DUCKDUCKGO = "duckduckgo"
     YAHOO_FINANCE = "yahoo"
+    AKSHARE = "akshare"
 
 
 async def get_suggestions_duckduckgo(query: str) -> List[Dict[str, Any]]:
@@ -111,6 +117,96 @@ async def get_suggestions_yahoo(query: str) -> List[Dict[str, Any]]:
         return []
 
 
+def _search_akshare_sync(query: str) -> List[Dict[str, Any]]:
+    """
+    Synchronous AkShare search function (runs in thread pool).
+    Searches both A-shares and funds.
+    """
+    try:
+        import akshare as ak
+        import pandas as pd
+        
+        results = []
+        query_lower = query.lower()
+        
+        # Search A-shares by name or code
+        try:
+            stock_df = ak.stock_info_a_code_name()
+            # Filter by code or name containing query
+            matches = stock_df[
+                stock_df['code'].str.contains(query, case=False, na=False) |
+                stock_df['name'].str.contains(query, case=False, na=False)
+            ].head(5)
+            
+            for _, row in matches.iterrows():
+                results.append({
+                    "ticker": row['code'],
+                    "name": row['name'],
+                    "exchange": "A股",
+                    "asset_type": "Stock",
+                    "isAkshare": True
+                })
+        except Exception as e:
+            logger.warning(f"AkShare stock search failed: {e}")
+        
+        # Search funds by name or code
+        try:
+            fund_df = ak.fund_name_em()
+            # Filter by code or name containing query
+            matches = fund_df[
+                fund_df['基金代码'].str.contains(query, case=False, na=False) |
+                fund_df['基金简称'].str.contains(query, case=False, na=False)
+            ].head(5)
+            
+            for _, row in matches.iterrows():
+                results.append({
+                    "ticker": row['基金代码'],
+                    "name": row['基金简称'],
+                    "exchange": "基金",
+                    "asset_type": "Fund",
+                    "isAkshare": True
+                })
+        except Exception as e:
+            logger.warning(f"AkShare fund search failed: {e}")
+        
+        return results[:10]  # Limit total results
+        
+    except ImportError:
+        logger.error("AkShare not installed. Run: pip install akshare")
+        return []
+    except Exception as e:
+        logger.error(f"AkShare search failed: {str(e)}")
+        return []
+
+
+async def get_suggestions_akshare(query: str) -> List[Dict[str, Any]]:
+    """
+    Get search suggestions from AkShare for China market.
+    
+    Supports searching A-shares and funds by name or code.
+    Runs synchronous AkShare functions in a thread pool.
+    
+    Args:
+        query: Search term (Chinese name or stock code)
+        
+    Returns:
+        List of suggestion dictionaries with isAkshare=True flag
+    """
+    try:
+        logger.info(f"AkShare suggestions for: '{query}'")
+        
+        # Run sync function in thread pool
+        loop = asyncio.get_event_loop()
+        results = await loop.run_in_executor(_executor, _search_akshare_sync, query)
+        
+        logger.info(f"AkShare returned {len(results)} suggestions")
+        return results
+        
+    except Exception as e:
+        logger.error(f"AkShare suggestions failed: {str(e)}")
+        return []
+
+
 async def get_suggestions(query: str, provider: SearchProvider = SearchProvider.DUCKDUCKGO) -> List[Dict[str, Any]]:
     """
     Get search suggestions using the specified provider.
@@ -124,5 +220,7 @@ async def get_suggestions(query: str, provider: SearchProvider = SearchProvider.
     """
     if provider == SearchProvider.YAHOO_FINANCE:
         return await get_suggestions_yahoo(query)
+    elif provider == SearchProvider.AKSHARE:
+        return await get_suggestions_akshare(query)
     else:
         return await get_suggestions_duckduckgo(query)

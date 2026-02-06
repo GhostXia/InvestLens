@@ -4,11 +4,13 @@ Market Data Service
 
 This module handles interactions with external market data providers.
 Currently utilizes `yfinance` to fetch delayed/real-time equity data.
+Also supports AkShare for China A-shares and funds.
 
 Key Responsibilities:
 - Fetching current price and change data.
 - Normalizing data structures for the frontend.
 - Handling API errors and missing tickers.
+- Auto-selecting provider based on ticker format.
 """
 
 # pyre-ignore[21]: yfinance installed but not found by IDE
@@ -23,7 +25,7 @@ from .providers.alpha_vantage import AlphaVantageProvider
 # pyre-ignore[21]: relative import
 from .providers.yfinance_impl import YFinanceProvider
 # pyre-ignore[21]: relative import
-from .config_manager import config_manager
+from .providers.akshare_impl import AkShareProvider
 # pyre-ignore[21]: relative import
 from .config_manager import config_manager
 
@@ -32,12 +34,24 @@ logger = logging.getLogger(__name__)
 
 # Initialize Providers
 _providers: List[BaseDataProvider] = []
+_akshare_provider: Optional[AkShareProvider] = None
+
+
+def _is_china_ticker(ticker: str) -> bool:
+    """
+    Check if ticker is a China A-share or fund code.
+    A-share codes: 6 digits starting with 0, 3, or 6
+    """
+    if len(ticker) == 6 and ticker.isdigit():
+        return ticker[0] in ('0', '3', '6')
+    return False
+
 
 def reload_providers():
     """
     Re-initializes the provider list based on the configuration manager.
     """
-    global _providers
+    global _providers, _akshare_provider
     _providers = []
     
     # Load dynamic sources
@@ -65,6 +79,14 @@ def reload_providers():
     # Add YFinance (Always enabled fallback)
     _providers.append(YFinanceProvider())
     
+    # Initialize AkShare provider separately (for China market)
+    try:
+        _akshare_provider = AkShareProvider()
+        logger.info("AkShare provider initialized for China market")
+    except Exception as e:
+        logger.warning(f"AkShare provider failed to initialize: {e}")
+        _akshare_provider = None
+    
     logger.info(f"Providers reloaded. Active: {[type(p).__name__ for p in _providers]}")
 
 # Initial load
@@ -74,6 +96,7 @@ reload_providers()
 def get_quote(ticker: str) -> dict:
     """
     Fetches the latest quote using available providers.
+    Automatically selects AkShare for China A-share tickers.
     """
     # pyre-ignore[21]: Import exists
     from ..database.models import get_ticker_from_isin
@@ -87,6 +110,16 @@ def get_quote(ticker: str) -> dict:
 
     error_details = []
     
+    # For China A-share tickers, try AkShare first
+    if _is_china_ticker(ticker) and _akshare_provider:
+        try:
+            quote = _akshare_provider.get_quote(ticker)
+            if quote:
+                return quote
+        except Exception as e:
+            error_details.append(f"AkShare: {str(e)}")
+    
+    # Fall back to standard providers
     for provider in _providers:
         try:
             quote = provider.get_quote(ticker)
@@ -107,15 +140,39 @@ def get_quote(ticker: str) -> dict:
 def get_historical_data(ticker: str, period: str = "6mo", interval: str = "1d") -> dict:
     """
     Fetches historical OHLC (Open, High, Low, Close) data for a ticker.
+    Uses AkShare for China A-shares, YFinance for others.
     
     Args:
-        ticker (str): The symbol to look up (e.g. NVDA).
+        ticker (str): The symbol to look up (e.g. NVDA or 000001).
         period (str): The data duration (e.g. '1mo', '1y', 'ytd').
         interval (str): The data granularity (e.g. '1d', '1wk').
         
     Returns:
         dict: A dictionary containing the 'symbol' and a list of 'candles'.
     """
+    # For China A-share tickers, try AkShare first
+    if _is_china_ticker(ticker) and _akshare_provider:
+        try:
+            # Map period to our format
+            period_map = {
+                "1mo": "1m", "3mo": "3m", "6mo": "6m",
+                "1y": "1y", "ytd": "1y", "max": "2y"
+            }
+            ak_period = period_map.get(period, "1y")
+            
+            candles = _akshare_provider.get_historical(ticker, ak_period)
+            if candles:
+                return {
+                    "symbol": ticker.upper(),
+                    "period": period,
+                    "interval": interval,
+                    "candles": candles,
+                    "data_source": "akshare"
+                }
+        except Exception as e:
+            logger.warning(f"AkShare historical failed for {ticker}: {e}")
+    
+    # Fall back to YFinance
     try:
         stock = yf.Ticker(ticker)
         hist = stock.history(period=period, interval=interval, auto_adjust=True)
@@ -138,7 +195,8 @@ def get_historical_data(ticker: str, period: str = "6mo", interval: str = "1d") 
             "symbol": ticker.upper(),
             "period": period,
             "interval": interval,
-            "candles": candles
+            "candles": candles,
+            "data_source": "yfinance"
         }
     except Exception as e:
         return {"error": str(e)}

@@ -81,7 +81,7 @@ def search_news(
 @router.get("/suggestions")
 async def get_suggestions(
     query: str = Query(..., description="搜索关键词（部分）"),
-    provider: str = Query("duckduckgo", description="搜索提供商: duckduckgo 或 yahoo")
+    provider: str = Query("duckduckgo", description="搜索提供商: duckduckgo, yahoo 或 akshare")
 ) -> Dict[str, Any]:
     """
     搜索建议（联想）端点
@@ -89,6 +89,7 @@ async def get_suggestions(
     支持多个搜索提供商：
     - duckduckgo: 通用搜索建议（返回搜索词，需要二次查询）
     - yahoo: Yahoo Finance 金融搜索（返回标准 ticker，可直接使用）
+    - akshare: A股/基金搜索（支持中文，返回标准代码）
     
     Args:
         query: 部分搜索关键词
@@ -105,8 +106,11 @@ async def get_suggestions(
         from app.services.search_providers import get_suggestions, SearchProvider
         
         # Validate and normalize provider
-        if provider.lower() == "yahoo":
+        provider_lower = provider.lower()
+        if provider_lower == "yahoo":
             selected_provider = SearchProvider.YAHOO_FINANCE
+        elif provider_lower == "akshare":
+            selected_provider = SearchProvider.AKSHARE
         else:
             selected_provider = SearchProvider.DUCKDUCKGO
         
