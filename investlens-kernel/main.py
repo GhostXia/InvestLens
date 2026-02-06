@@ -20,7 +20,7 @@ from fastapi.responses import StreamingResponse
 # pyre-ignore[21]: app.services not found
 from app.services import market_data, consensus
 # pyre-ignore[21]: app.routers not found
-from app.routers import config, privacy, search
+from app.routers import config, privacy, search, fund, watchlist, portfolio
 # pyre-ignore[21]: app.models not found
 from app.models.analysis import AnalysisRequest, AnalysisResponse
 
@@ -412,6 +412,9 @@ Guidelines:
         raise HTTPException(status_code=500, detail=str(e))
 
 app.include_router(config.router)
-app.include_router(privacy.router)
-app.include_router(search.router)
-
+app.include_router(fund.legacy_router)
+app.include_router(watchlist.router)
+app.include_router(portfolio.router)
+app.include_router(fund.router)  # New unified /holdings endpoint
+app.include_router(fund.legacy_router)  # Legacy /fund endpoint for compatibility
+app.include_router(watchlist.router)  # User watchlist management

@@ -3,7 +3,7 @@
 import * as React from "react"
 import Link from "next/link"
 import { usePathname } from "next/navigation"
-import { LayoutDashboard, Settings, BookOpen, LineChart, PanelLeft, Github } from "lucide-react"
+import { LayoutDashboard, Settings, BookOpen, LineChart, PanelLeft, Github, Star } from "lucide-react"
 
 import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
@@ -56,6 +56,12 @@ export function AppShell({ children }: AppShellProps) {
             label: "Wiki",
             icon: BookOpen,
             active: pathname.startsWith("/wiki"),
+        },
+        {
+            href: "/watchlist",
+            label: "Watchlist",
+            icon: Star,
+            active: pathname.startsWith("/watchlist"),
         },
         {
             href: "/settings",

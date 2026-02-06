@@ -1,9 +1,11 @@
 "use client"
 
 import { Badge } from "@/components/ui/badge"
+import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
 import { Skeleton } from "@/components/ui/skeleton"
-import { ArrowUp, ArrowDown, Database } from "lucide-react"
+import { ArrowUp, ArrowDown, Database, Star } from "lucide-react"
+import { useWatchlistStore } from "@/lib/store/watchlist"
 
 interface TickerHeaderProps {
     symbol: string
@@ -50,6 +52,18 @@ export function TickerHeader({
     peRatio,
     turnoverRate
 }: TickerHeaderProps) {
+    const { addToWatchlist, removeFromWatchlist, isInWatchlist } = useWatchlistStore()
+    const inWatchlist = isInWatchlist(symbol)
+
+    const toggleWatchlist = (e: React.MouseEvent) => {
+        e.stopPropagation()
+        if (inWatchlist) {
+            removeFromWatchlist(symbol)
+        } else {
+            addToWatchlist(symbol, displayName)
+        }
+    }
+
     if (isLoading) {
         return (
             <div className="flex items-center gap-4 mb-6">
@@ -100,75 +114,85 @@ export function TickerHeader({
     return (
         <div className="space-y-4 mb-6 animate-in fade-in slide-in-from-top-4 duration-500">
             {/* Main Header */}
-            <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-                <div className="flex items-center gap-4">
-                    <div className="flex items-center justify-center h-16 w-16 rounded-lg bg-primary/10 text-primary font-bold text-xl border border-primary/20">
-                        {symbol.slice(0, 2)}
-                    </div>
-                    <div>
-                        <div className="flex items-center gap-2">
-                            <h1 className="text-3xl font-bold tracking-tight">{displayName}</h1>
-                            {dataSource && (
-                                <Badge variant="outline" className={`text-xs ${dataSource.includes("akshare")
-                                    ? "border-red-500/50 text-red-600 dark:text-red-400"
-                                    : "border-green-500/50 text-green-600 dark:text-green-400"
-                                    }`}>
-                                    <Database className="h-3 w-3 mr-1" />
-                                    {dataSource === "akshare" ? "AkShare" :
-                                        dataSource === "akshare_delayed" ? "AkShare (Delayed)" : "Yahoo Finance"}
-                                </Badge>
-                            )}
-                        </div>
-                        {displaySymbol && <p className="text-muted-foreground font-medium">{displaySymbol}</p>}
-                    </div>
+            <div className="flex items-center gap-4">
+                <div className="flex items-center justify-center h-16 w-16 rounded-lg bg-primary/10 text-primary font-bold text-xl border border-primary/20">
+                    {symbol.slice(0, 2)}
                 </div>
-
-                <div className="flex flex-col items-end">
-                    <div className="flex items-baseline gap-2">
-                        <span className="text-4xl font-extrabold tracking-tight">
-                            {currencySymbol}{price?.toFixed(2)}
-                        </span>
-                        <span className="text-sm text-muted-foreground font-medium">{effectiveCurrency}</span>
+                <div>
+                    <div className="flex items-center gap-2">
+                        <h1 className="text-3xl font-bold tracking-tight">{displayName}</h1>
+                        <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-8 w-8 hover:bg-transparent"
+                            onClick={toggleWatchlist}
+                        >
+                            <Star
+                                className={`h-5 w-5 ${inWatchlist ? "fill-yellow-400 text-yellow-400" : "text-muted-foreground"}`}
+                            />
+                        </Button>
+                        {dataSource && (
+                            <Badge variant="outline" className={`text-xs ${dataSource.includes("akshare")
+                                ? "border-red-500/50 text-red-600 dark:text-red-400"
+                                : "border-green-500/50 text-green-600 dark:text-green-400"
+                                }`}>
+                                <Database className="h-3 w-3 mr-1" />
+                                {dataSource === "akshare" ? "AkShare" :
+                                    dataSource === "akshare_delayed" ? "AkShare (Delayed)" : "Yahoo Finance"}
+                            </Badge>
+                        )}
                     </div>
-                    <Badge
-                        variant={isPositive ? "default" : "destructive"}
-                        className={`gap-1 mt-1 ${isPositive ? "bg-green-600 hover:bg-green-700" : "bg-red-600 hover:bg-red-700"}`}
-                    >
-                        {isPositive ? <ArrowUp className="h-3 w-3" /> : <ArrowDown className="h-3 w-3" />}
-                        {Math.abs(change).toFixed(2)} ({Math.abs(changePercent).toFixed(2)}%)
-                    </Badge>
+                    {displaySymbol && <p className="text-muted-foreground font-medium">{displaySymbol}</p>}
                 </div>
             </div>
 
-            {/* Key Metrics Bar */}
-            {(volume || marketCap || peRatio || turnoverRate) && (
-                <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-                    {volume && (
-                        <div className="bg-muted/30 rounded-lg px-3 py-2">
-                            <p className="text-xs text-muted-foreground">Volume</p>
-                            <p className="font-mono font-medium">{formatNumber(volume)}</p>
-                        </div>
-                    )}
-                    {marketCap && (
-                        <div className="bg-muted/30 rounded-lg px-3 py-2">
-                            <p className="text-xs text-muted-foreground">Market Cap</p>
-                            <p className="font-mono font-medium">{currencySymbol}{formatNumber(marketCap)}</p>
-                        </div>
-                    )}
-                    {peRatio && (
-                        <div className="bg-muted/30 rounded-lg px-3 py-2">
-                            <p className="text-xs text-muted-foreground">P/E Ratio</p>
-                            <p className="font-mono font-medium">{peRatio.toFixed(2)}</p>
-                        </div>
-                    )}
-                    {turnoverRate && (
-                        <div className="bg-muted/30 rounded-lg px-3 py-2">
-                            <p className="text-xs text-muted-foreground">Turnover</p>
-                            <p className="font-mono font-medium">{turnoverRate.toFixed(2)}%</p>
-                        </div>
-                    )}
+            <div className="flex flex-col items-end">
+                <div className="flex items-baseline gap-2">
+                    <span className="text-4xl font-extrabold tracking-tight">
+                        {currencySymbol}{price?.toFixed(2)}
+                    </span>
+                    <span className="text-sm text-muted-foreground font-medium">{effectiveCurrency}</span>
                 </div>
-            )}
-        </div>
+                <Badge
+                    variant={isPositive ? "default" : "destructive"}
+                    className={`gap-1 mt-1 ${isPositive ? "bg-green-600 hover:bg-green-700" : "bg-red-600 hover:bg-red-700"}`}
+                >
+                    {isPositive ? <ArrowUp className="h-3 w-3" /> : <ArrowDown className="h-3 w-3" />}
+                    {Math.abs(change).toFixed(2)} ({Math.abs(changePercent).toFixed(2)}%)
+                </Badge>
+            </div>
+
+            {/* Key Metrics Bar */}
+            {
+                (volume || marketCap || peRatio || turnoverRate) && (
+                    <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                        {volume && (
+                            <div className="bg-muted/30 rounded-lg px-3 py-2">
+                                <p className="text-xs text-muted-foreground">Volume</p>
+                                <p className="font-mono font-medium">{formatNumber(volume)}</p>
+                            </div>
+                        )}
+                        {marketCap && (
+                            <div className="bg-muted/30 rounded-lg px-3 py-2">
+                                <p className="text-xs text-muted-foreground">Market Cap</p>
+                                <p className="font-mono font-medium">{currencySymbol}{formatNumber(marketCap)}</p>
+                            </div>
+                        )}
+                        {peRatio && (
+                            <div className="bg-muted/30 rounded-lg px-3 py-2">
+                                <p className="text-xs text-muted-foreground">P/E Ratio</p>
+                                <p className="font-mono font-medium">{peRatio.toFixed(2)}</p>
+                            </div>
+                        )}
+                        {turnoverRate && (
+                            <div className="bg-muted/30 rounded-lg px-3 py-2">
+                                <p className="text-xs text-muted-foreground">Turnover</p>
+                                <p className="font-mono font-medium">{turnoverRate.toFixed(2)}%</p>
+                            </div>
+                        )}
+                    </div>
+                )
+            }
+        </div >
     )
 }

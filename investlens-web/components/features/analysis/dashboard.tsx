@@ -6,6 +6,7 @@ import { PriceChart } from "@/components/features/analysis/price-chart"
 import { ChatBubble } from "@/components/features/analysis/chat-bubble"
 import { CompanyProfile } from "@/components/features/analysis/company-profile"
 import { DebateViewer } from "@/components/features/analysis/DebateViewer"
+import { HoldingsPanel } from "@/components/features/analysis/HoldingsPanel"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Skeleton } from "@/components/ui/skeleton"
@@ -166,6 +167,9 @@ export function AnalysisDashboard({ ticker }: AnalysisDashboardProps) {
                         employees={fundamentals?.FullTimeEmployees}
                         website={fundamentals?.Website}
                     />
+
+                    {/* Holdings Panel - Shows for funds, ETFs, and indices */}
+                    <HoldingsPanel symbol={ticker} />
 
                     {/* AI Consensus Engine Output Area */}
                     <Card>
