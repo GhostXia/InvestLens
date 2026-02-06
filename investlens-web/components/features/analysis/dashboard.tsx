@@ -4,6 +4,7 @@ import { useEffect, useState } from "react"
 import { TickerHeader } from "@/components/features/analysis/header"
 import { PriceChart } from "@/components/features/analysis/price-chart"
 import { ChatBubble } from "@/components/features/analysis/chat-bubble"
+import { CompanyProfile } from "@/components/features/analysis/company-profile"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Skeleton } from "@/components/ui/skeleton"
@@ -33,14 +34,17 @@ export function AnalysisDashboard({ ticker }: AnalysisDashboardProps) {
     const { quantModeEnabled, apiKey, baseUrl, model } = useSettingsStore()
     const [marketData, setMarketData] = useState<any>(null)
     const [analysis, setAnalysis] = useState<any>(null)
+    const [fundamentals, setFundamentals] = useState<any>(null)
     const [loading, setLoading] = useState(true)
     const [analysisLoading, setAnalysisLoading] = useState(true)
+    const [fundLoading, setFundLoading] = useState(true)
     const [error, setError] = useState<string | null>(null)
 
     useEffect(() => {
         const fetchData = async () => {
             setLoading(true)
             setAnalysisLoading(true)
+            setFundLoading(true)
             setError(null)
             try {
                 // 1. Fetch Market Data
@@ -62,7 +66,9 @@ export function AnalysisDashboard({ ticker }: AnalysisDashboardProps) {
 
                 console.log("Sending API request with headers:", { hasApiKey: !!apiKey, hasBaseUrl: !!baseUrl, hasModel: !!model, baseUrl, model, quantMode: quantModeEnabled })
 
-                const analysisRes = await fetch(getApiUrl("/api/v1/analyze"), {
+                // Start analysis and fundamentals fetched in parallel or sequence
+
+                const analysisPromise = fetch(getApiUrl("/api/v1/analyze"), {
                     method: "POST",
                     headers: headers,
                     body: JSON.stringify({
@@ -71,15 +77,27 @@ export function AnalysisDashboard({ ticker }: AnalysisDashboardProps) {
                     })
                 })
 
+                const fundPromise = fetch(getApiUrl(`/api/v1/fundamentals/${ticker}`))
+
+                // Await them
+                const [analysisRes, fundRes] = await Promise.all([analysisPromise, fundPromise])
+
                 if (analysisRes.ok) {
                     const analysisData = await analysisRes.json()
                     setAnalysis(analysisData)
                 }
+
+                if (fundRes.ok) {
+                    const fundData = await fundRes.json()
+                    setFundamentals(fundData)
+                }
+
             } catch (err: any) {
                 setError(err.message || "Unknown error")
             } finally {
                 setLoading(false)
                 setAnalysisLoading(false)
+                setFundLoading(false)
             }
         }
 
@@ -122,6 +140,15 @@ export function AnalysisDashboard({ ticker }: AnalysisDashboardProps) {
                 {/* Left Column: Chart & Visuals (Span 2 or 3) */}
                 <div className="md:col-span-2 lg:col-span-3 space-y-6">
                     <PriceChart ticker={ticker} quantMode={quantModeEnabled} />
+
+                    <CompanyProfile
+                        isLoading={fundLoading}
+                        description={fundamentals?.Description}
+                        sector={fundamentals?.Sector}
+                        industry={fundamentals?.Industry}
+                        employees={fundamentals?.FullTimeEmployees}
+                        website={fundamentals?.Website}
+                    />
 
                     {/* AI Consensus Engine Output Area */}
                     <Card>
@@ -192,9 +219,17 @@ export function AnalysisDashboard({ ticker }: AnalysisDashboardProps) {
 
                     <Card>
                         <CardHeader>
-                            <CardTitle className="text-base">Key Statistics</CardTitle>
+                            <CardTitle className="text-base">Financial Health</CardTitle>
                         </CardHeader>
                         <CardContent className="grid gap-4">
+                            <div className="flex justify-between items-center text-sm">
+                                <span className="text-muted-foreground">Market Cap</span>
+                                <span className="font-mono font-medium">
+                                    {fundamentals?.MarketCapitalization && fundamentals.MarketCapitalization !== "N/A"
+                                        ? fundamentals.MarketCapitalization
+                                        : (marketData?.market_cap ? (marketData.market_cap / 1000000000).toFixed(2) + "B" : "N/A")}
+                                </span>
+                            </div>
                             <div className="flex justify-between items-center text-sm">
                                 <span className="text-muted-foreground">Volume</span>
                                 <span className="font-mono font-medium">
@@ -202,15 +237,35 @@ export function AnalysisDashboard({ ticker }: AnalysisDashboardProps) {
                                 </span>
                             </div>
                             <div className="flex justify-between items-center text-sm">
-                                <span className="text-muted-foreground">Market Cap</span>
+                                <span className="text-muted-foreground">P/E Ratio (TTM)</span>
                                 <span className="font-mono font-medium">
-                                    {marketData?.market_cap ? (marketData.market_cap / 1000000000).toFixed(2) + "B" : "N/A"}
+                                    {fundamentals?.PERatio && fundamentals.PERatio !== "N/A"
+                                        ? fundamentals.PERatio
+                                        : (marketData?.pe_ratio ? marketData.pe_ratio.toFixed(2) : "N/A")}
                                 </span>
                             </div>
                             <div className="flex justify-between items-center text-sm">
-                                <span className="text-muted-foreground">P/E Ratio</span>
+                                <span className="text-muted-foreground">EPS (TTM)</span>
                                 <span className="font-mono font-medium">
-                                    {marketData?.pe_ratio ? marketData.pe_ratio.toFixed(2) : "N/A"}
+                                    {fundamentals?.EPS || "N/A"}
+                                </span>
+                            </div>
+                            <div className="flex justify-between items-center text-sm">
+                                <span className="text-muted-foreground">Revenue (TTM)</span>
+                                <span className="font-mono font-medium">
+                                    {fundamentals?.RevenueTTM || "N/A"}
+                                </span>
+                            </div>
+                            <div className="flex justify-between items-center text-sm">
+                                <span className="text-muted-foreground">Gross Profit</span>
+                                <span className="font-mono font-medium">
+                                    {fundamentals?.GrossProfitTTM || "N/A"}
+                                </span>
+                            </div>
+                            <div className="flex justify-between items-center text-sm">
+                                <span className="text-muted-foreground">Div Yield</span>
+                                <span className="font-mono font-medium">
+                                    {fundamentals?.DividendYield ? (fundamentals.DividendYield * 100).toFixed(2) + "%" : "N/A"}
                                 </span>
                             </div>
                         </CardContent>

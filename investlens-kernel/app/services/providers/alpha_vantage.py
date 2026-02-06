@@ -44,13 +44,13 @@ class AlphaVantageProvider(BaseDataProvider):
                 "change": float(quote.get("09. change", 0)),
                 "change_percent": float(quote.get("10. change percent", "0").replace("%", "")),
                 "name": ticker.upper(), # AV doesn't return name in Global Quote
-                "currency": "USD" # default assumption for AV US stocks
+                "currency": quote.get("08. currency", "USD")
             }
         except Exception as e:
             logger.error(f"Alpha Vantage quote failed: {e}")
             return None
 
-    def get_financials(self, ticker: str) -> Dict[str, str]:
+    def get_financials(self, ticker: str) -> Dict[str, Any]:
         if not self.api_key:
             return {}
 
@@ -67,17 +67,47 @@ class AlphaVantageProvider(BaseDataProvider):
                 return {}
 
             # Map AV fields to our common format
-            financials = {}
-            if "RevenueTTM" in data:
-                 val = float(data["RevenueTTM"])
-                 financials["Total Revenue"] = f"{val/1_000_000_000:.2f}B" if val > 1e9 else str(val)
-            
-            if "GrossProfitTTM" in data:
-                 val = float(data["GrossProfitTTM"])
-                 financials["Gross Profit"] = f"{val/1_000_000_000:.2f}B" if val > 1e9 else str(val)
-
-            if "PERatio" in data:
-                financials["PE Ratio"] = data["PERatio"]
+            financials = {
+                "Description": data.get("Description", "No description available."),
+                "Sector": data.get("Sector", "N/A"),
+                "Industry": data.get("Industry", "N/A"),
+                "FullTimeEmployees": data.get("FullTimeEmployees", "N/A"),
+                "FiscalYearEnd": data.get("FiscalYearEnd", "N/A"),
+                "LatestQuarter": data.get("LatestQuarter", "N/A"),
+                "MarketCapitalization": data.get("MarketCapitalization", "N/A"),
+                "EBITDA": data.get("EBITDA", "N/A"),
+                "PERatio": data.get("PERatio", "N/A"),
+                "PEGRatio": data.get("PEGRatio", "N/A"),
+                "BookValue": data.get("BookValue", "N/A"),
+                "DividendPerShare": data.get("DividendPerShare", "N/A"),
+                "DividendYield": data.get("DividendYield", "N/A"),
+                "EPS": data.get("EPS", "N/A"),
+                "RevenuePerShareTTM": data.get("RevenuePerShareTTM", "N/A"),
+                "ProfitMargin": data.get("ProfitMargin", "N/A"),
+                "OperatingMarginTTM": data.get("OperatingMarginTTM", "N/A"),
+                "ReturnOnAssetsTTM": data.get("ReturnOnAssetsTTM", "N/A"),
+                "ReturnOnEquityTTM": data.get("ReturnOnEquityTTM", "N/A"),
+                "RevenueTTM": data.get("RevenueTTM", "N/A"),
+                "GrossProfitTTM": data.get("GrossProfitTTM", "N/A"),
+                "DilutedEPSTTM": data.get("DilutedEPSTTM", "N/A"),
+                "QuarterlyEarningsGrowthYOY": data.get("QuarterlyEarningsGrowthYOY", "N/A"),
+                "QuarterlyRevenueGrowthYOY": data.get("QuarterlyRevenueGrowthYOY", "N/A"),
+                "AnalystTargetPrice": data.get("AnalystTargetPrice", "N/A"),
+                "TrailingPE": data.get("TrailingPE", "N/A"),
+                "ForwardPE": data.get("ForwardPE", "N/A"),
+                "PriceToSalesRatioTTM": data.get("PriceToSalesRatioTTM", "N/A"),
+                "PriceToBookRatio": data.get("PriceToBookRatio", "N/A"),
+                "EVToRevenue": data.get("EVToRevenue", "N/A"),
+                "EVToEBITDA": data.get("EVToEBITDA", "N/A"),
+                "Beta": data.get("Beta", "N/A"),
+                "52WeekHigh": data.get("52WeekHigh", "N/A"),
+                "52WeekLow": data.get("52WeekLow", "N/A"),
+                "50DayMovingAverage": data.get("50DayMovingAverage", "N/A"),
+                "200DayMovingAverage": data.get("200DayMovingAverage", "N/A"),
+                "SharesOutstanding": data.get("SharesOutstanding", "N/A"),
+                "DividendDate": data.get("DividendDate", "N/A"),
+                "ExDividendDate": data.get("ExDividendDate", "N/A"),
+            }
                 
             return financials
         except Exception as e:

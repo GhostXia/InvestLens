@@ -57,32 +57,52 @@ class YFinanceProvider(BaseDataProvider):
             logger.error(f"YFinance quote failed: {e}")
             return None
 
-    def get_financials(self, ticker: str) -> Dict[str, str]:
+    def get_financials(self, ticker: str) -> Dict[str, Any]:
         try:
             stock = yf.Ticker(ticker)
-            # pyre-ignore[16]: dynamic attribute
-            fin = stock.financials
+            # Use info instead of financials dataframe, as it has the profile and key summary stats
+            info = stock.info
             
-            if fin is None or fin.empty:
+            if not info:
                 return {}
                 
-            data = {}
-            target_metrics = ["Total Revenue", "Net Income", "Gross Profit", "Operating Income"]
+            # Map YF fields to common format (matching AV keys where possible)
+            financials = {
+                "Description": info.get("longBusinessSummary", "No description available."),
+                "Sector": info.get("sector", "N/A"),
+                "Industry": info.get("industry", "N/A"),
+                "FullTimeEmployees": info.get("fullTimeEmployees", "N/A"),
+                "MarketCapitalization": info.get("marketCap", "N/A"),
+                "EBITDA": info.get("ebitda", "N/A"),
+                "PERatio": info.get("trailingPE", "N/A"),
+                "PEGRatio": info.get("pegRatio", "N/A"),
+                "BookValue": info.get("bookValue", "N/A"),
+                "DividendYield": info.get("dividendYield", "N/A"),
+                "EPS": info.get("trailingEps", "N/A"),
+                "RevenueTTM": info.get("totalRevenue", "N/A"),
+                "GrossProfitTTM": info.get("grossProfits", "N/A"), # Note: YF might return raw number
+                "ProfitMargin": info.get("profitMargins", "N/A"),
+                "OperatingMarginTTM": info.get("operatingMargins", "N/A"),
+                "ReturnOnAssetsTTM": info.get("returnOnAssets", "N/A"),
+                "ReturnOnEquityTTM": info.get("returnOnEquity", "N/A"),
+                "TrailingPE": info.get("trailingPE", "N/A"),
+                "ForwardPE": info.get("forwardPE", "N/A"),
+                "PriceToSalesRatioTTM": info.get("priceToSalesTrailing12Months", "N/A"),
+                "PriceToBookRatio": info.get("priceToBook", "N/A"),
+                "Beta": info.get("beta", "N/A"),
+                "52WeekHigh": info.get("fiftyTwoWeekHigh", "N/A"),
+                "52WeekLow": info.get("fiftyTwoWeekLow", "N/A"),
+                "50DayMovingAverage": info.get("fiftyDayAverage", "N/A"),
+                "200DayMovingAverage": info.get("twoHundredDayAverage", "N/A"),
+                "Website": info.get("website", ""),
+            }
             
-            for metric in target_metrics:
-                try:
-                    if metric in fin.index:
-                        val = fin.loc[metric].iloc[0]
-                        if val > 1_000_000_000:
-                            val_str = f"{val/1_000_000_000:.2f}B"
-                        elif val > 1_000_000:
-                            val_str = f"{val/1_000_000:.2f}M"
-                        else:
-                            val_str = str(val)
-                        data[metric] = val_str
-                except Exception:
-                    continue
-            return data
+            # Format large numbers for consistency with AV string format?
+            # Or leave as numbers and let frontend handle?
+            # Since AV returns strings, frontend will likely expect strings or raw numbers.
+            # Best to leave YF numbers as numbers and handle mixed types in frontend formatter.
+            
+            return financials
         except Exception as e:
             logger.error(f"YFinance financials failed: {e}")
             return {}

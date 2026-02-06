@@ -120,9 +120,17 @@ def get_quote(ticker: str) -> dict:
             error_details.append(f"AkShare: {str(e)}")
     
     # Fall back to standard providers
+    # Normalize for global providers (AV/YF) if it's a China ticker to avoid false positives
+    global_ticker = ticker
+    if len(ticker) == 6 and ticker.isdigit():
+        if ticker.startswith(('5', '6', '9')):
+             global_ticker = f"{ticker}.SS"
+        elif ticker.startswith(('0', '1', '2', '3')):
+             global_ticker = f"{ticker}.SZ"
+
     for provider in _providers:
         try:
-            quote = provider.get_quote(ticker)
+            quote = provider.get_quote(global_ticker)
             if quote:
                 return quote
         except Exception as e:
@@ -174,13 +182,22 @@ def get_historical_data(ticker: str, period: str = "6mo", interval: str = "1d") 
 
     # Try Configured Providers (e.g., AlphaVantage)
     # This enables custom data sources for historical charts
+    
+    # Normalize for global providers
+    global_ticker = ticker
+    if len(ticker) == 6 and ticker.isdigit():
+        if ticker.startswith(('5', '6', '9')):
+             global_ticker = f"{ticker}.SS"
+        elif ticker.startswith(('0', '1', '2', '3')):
+             global_ticker = f"{ticker}.SZ"
+
     for provider in _providers:
         # Skip standard YFinanceProvider here as we have specific fallback logic below
         # or if it doesn't implement get_historical
         if hasattr(provider, 'get_historical'):
             try:
                 # pyre-ignore[16]: dynamic attribute
-                data = provider.get_historical(ticker, period=period)
+                data = provider.get_historical(global_ticker, period=period)
                 if data:
                     # Enrich with source info if not present
                     if "data_source" not in data:
@@ -299,9 +316,17 @@ def get_financials(ticker: str) -> dict:
     """
     Fetches key financial metrics using available providers.
     """
+    # Normalize for global providers (AV/YF) if it's a China ticker
+    global_ticker = ticker
+    if len(ticker) == 6 and ticker.isdigit():
+        if ticker.startswith(('5', '6', '9')):
+             global_ticker = f"{ticker}.SS"
+        elif ticker.startswith(('0', '1', '2', '3')):
+             global_ticker = f"{ticker}.SZ"
+
     for provider in _providers:
         try:
-            data = provider.get_financials(ticker)
+            data = provider.get_financials(global_ticker)
             if data:
                 return data
         except Exception:

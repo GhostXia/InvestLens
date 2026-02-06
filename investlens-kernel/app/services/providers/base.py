@@ -24,7 +24,7 @@ class BaseDataProvider(ABC):
         pass
 
     @abstractmethod
-    def get_financials(self, ticker: str) -> Dict[str, str]:
+    def get_financials(self, ticker: str) -> Dict[str, Any]:
         """
         Fetch key financial metrics (Revenue, Net Income, etc.).
         Returns empty dict if unavailable.

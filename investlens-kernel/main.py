@@ -176,6 +176,16 @@ def get_historical_market_data(ticker: str, period: str = "6mo"):
     """
     return market_data.get_historical_data(ticker, period=period)
 
+@app.get("/api/v1/fundamentals/{ticker}")
+def get_fundamental_data(ticker: str):
+    """
+    Fundamentals Endpoint
+    ---------------------
+    Fetches static/semi-static company profile and financial metrics.
+    Delegate to market_data service which handles normalization and provider selection.
+    """
+    return market_data.get_financials(ticker)
+
 @app.get("/api/v1/market/prediction/{ticker}")
 def get_price_prediction(ticker: str, days: int = 7):
     """
