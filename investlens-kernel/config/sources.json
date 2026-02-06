@@ -1,9 +1,0 @@
-[
-    {
-        "name": "New Alpha Vantage",
-        "provider_type": "alpha_vantage",
-        "api_key": "",
-        "endpoint_override": "",
-        "enabled": true
-    }
-]

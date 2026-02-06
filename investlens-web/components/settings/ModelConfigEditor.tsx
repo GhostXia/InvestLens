@@ -25,9 +25,9 @@ export function ModelConfigEditor() {
         const newConfig: ModelConfig = {
             id: crypto.randomUUID(),
             name: "New Model",
-            baseUrl: "https://api.openai.com/v1",
+            baseUrl: "",
             apiKey: "",
-            model: "gpt-4",
+            model: "",
             enabled: true
         }
         addModelConfig(newConfig)

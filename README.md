@@ -15,19 +15,23 @@
 - **Multi-Market Support**: US stocks (Yahoo Finance) + China A-shares & Funds (AkShare)
 - **Interactive Charts**: Dynamic charts built with Recharts, supporting 1M/6M/1Y/YTD timeframes
 
-### 2. Multi-Model Consensus Engine
-- **AI-Driven Analysis**: Automatically invokes LLMs (OpenAI, DeepSeek) to generate professional investment reports
+### 2. Multi-Model Consensus Engine (LLM-as-a-Judge)
+- **Multi-Provider Support**: Configure multiple LLM providers (OpenAI, DeepSeek, Ollama, etc.) simultaneously
+- **Dual-Perspective Analysis**: Each model generates both **Bull** (optimistic) and **Bear** (skeptical) perspectives
+- **Judge Synthesis**: A final "Judge" persona synthesizes all perspectives into a balanced report
 - **Context-Aware Chat**: Floating AI assistant with real-time market data context
-- **Structured Output**: Extracts Bullish/Bearish Thesis and Confidence Score
+- **Structured Output**: Extracts Bullish/Bearish Thesis, Confidence Score, and optional Trading Plan
 
 ### 3. Quantitative Prediction (Quant Mode)
 - **Monte Carlo Simulation**: Projects future price paths based on historical volatility
 - **Visual Confidence Bands**: Displays 95% confidence interval for predictions
+- **High Risk Trading Plan**: AI generates specific entry/exit prices and position sizing (Quant Mode only)
 - **Safety Gating**: Advanced features gated behind "Quant Mode" toggle with risk disclaimers
 
 ### 4. Local-First Security
 - **BYO-API Key**: Users bring their own API keys
 - **Zero-Persistence**: Keys stored only in `localStorage`, passed via headers, no server-side storage
+
 
 ---
 
