@@ -13,8 +13,10 @@ Configuration is handled via environment variables.
 """
 
 import os
+# pyre-ignore[21]: OpenAI is installed but not found by IDE
 from openai import OpenAI
 import logging
+from typing import Optional
 
 logger = logging.getLogger(__name__)
 
@@ -35,7 +37,7 @@ class LLMProvider:
             base_url=self.base_url
         )
 
-    def generate_analysis(self, system_prompt: str, user_prompt: str, api_key_override: str = None, base_url_override: str = None, model_override: str = None) -> str:
+    def generate_analysis(self, system_prompt: str, user_prompt: str, api_key_override: str | None = None, base_url_override: str | None = None, model_override: str | None = None) -> str:
         """
         Executes a synchronus generation call to the LLM.
         
@@ -66,6 +68,7 @@ class LLMProvider:
             if api_key_override or base_url_override or model_override:
                 # If a user key or base URL is provided, we instantiate a temporary client
                 # This is lightweight enough for the prototype
+                # pyre-ignore[21]: OpenAI is installed
                 from openai import OpenAI
                 client = OpenAI(
                     api_key=api_key_override if api_key_override else self.api_key,

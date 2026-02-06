@@ -7,3 +7,5 @@ python-dotenv>=1.0.0
 yfinance>=0.2.36
 # TA-Lib wheel might need manual install on Windows, but listing here for reference
 # ta-lib
+openai>=1.10.0
+duckduckgo-search>=4.4.0

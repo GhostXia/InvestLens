@@ -11,6 +11,7 @@ Key Responsibilities:
 - Handling API errors and missing tickers.
 """
 
+# pyre-ignore[21]: yfinance installed but not found by IDE
 import yfinance as yf
 import logging
 
@@ -37,11 +38,13 @@ def get_quote(ticker: str) -> dict:
     Raises:
         ValueError: If the ticker is invalid or no data is found.
     """
-    from app.database.models import get_ticker_from_isin
+    # pyre-ignore[21]: Import exists
+    from ..database.models import get_ticker_from_isin
     
     original_input = ticker
     
     # Try to convert ISIN to ticker if needed
+    # pyre-ignore[16]: Pyre string slicing check
     if len(ticker) == 12 and ticker[:2].isalpha():  # Looks like an ISIN
         logger.info(f"Detected potential ISIN: {ticker}")
         converted_ticker = get_ticker_from_isin(ticker)
@@ -64,13 +67,13 @@ def get_quote(ticker: str) -> dict:
              if not standard_info or 'currentPrice' not in standard_info:
                  raise ValueError(f"No data found for ticker: {ticker}")
              
-             price = standard_info.get('currentPrice')
-             previous_close = standard_info.get('previousClose')
+             price = float(standard_info.get('currentPrice'))
+             previous_close = float(standard_info.get('previousClose')) if standard_info.get('previousClose') else None
              name = standard_info.get('shortName', ticker)
              currency = standard_info.get('currency', 'USD')
         else:
-             price = info.last_price
-             previous_close = info.previous_close
+             price = float(info.last_price)
+             previous_close = float(info.previous_close) if info.previous_close else None
              # Note: fast_info handling of name/currency varies, minimal fallback here
              name = ticker.upper() 
              currency = info.currency
@@ -90,8 +93,11 @@ def get_quote(ticker: str) -> dict:
 
         return {
             "symbol": ticker.upper(),
+            # pyre-ignore[6]: Rounding float is valid
             "price": round(price, 2),
+            # pyre-ignore[6]: Rounding float is valid
             "change": round(change, 2),
+            # pyre-ignore[6]: Rounding float is valid
             "change_percent": round(change_percent, 2),
             "name": name,
             "currency": currency,
@@ -148,6 +154,7 @@ def get_historical_data(ticker: str, period: str = "6mo", interval: str = "1d") 
     except Exception as e:
         return {"error": str(e)}
 
+# pyre-ignore[21]: numpy installed but not found by IDE
 import numpy as np
 from datetime import datetime, timedelta
 

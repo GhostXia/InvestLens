@@ -17,9 +17,12 @@ Current State:
 
 import json
 from datetime import datetime
-from app.services import market_data, search_service
-from app.services.llm_provider import llm_client
-from app.models.analysis import AnalysisResponse
+# pyre-ignore[21]: Imports exist
+from . import market_data, search_service
+# pyre-ignore[21]: Imports exist
+from .llm_provider import llm_client
+# pyre-ignore[21]: Imports exist
+from ..models.analysis import AnalysisResponse
 
 def generate_consensus_analysis(ticker: str, focus_areas: list[str], api_key: str | None = None, base_url: str | None = None, model: str | None = None) -> AnalysisResponse:
     """

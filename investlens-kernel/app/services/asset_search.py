@@ -7,7 +7,8 @@ Searches across ISIN codes, tickers, and asset names.
 """
 
 import logging
-from app.database.models import search_assets, get_ticker_from_isin
+# pyre-ignore[21]: Import exists
+from ..database.models import search_assets, get_ticker_from_isin
 
 logger = logging.getLogger(__name__)
 
@@ -57,6 +58,7 @@ def convert_to_ticker(identifier: str) -> dict:
         Dictionary with conversion result
     """
     # Check if it looks like an ISIN (12 chars, starts with 2 letters)
+    # pyre-ignore[16]: Pyre has issues with str slicing
     if len(identifier) == 12 and identifier[:2].isalpha():
         ticker = get_ticker_from_isin(identifier)
         if ticker:
