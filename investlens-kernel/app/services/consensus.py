@@ -210,51 +210,56 @@ def generate_consensus_analysis(ticker: str, focus_areas: list[str], api_key: st
 def _parse_custom_format(text: str, quote: dict, ticker: str) -> AnalysisResponse:
     """
     Parses the delimiter-based output from the LLM.
+    Uses regex to extract sections more robustly.
     """
+    import re
+    
     summary = ""
     bull = ""
     bear = ""
-    sentiment = ""  # Changed from default to empty, filled later
+    sentiment = ""
     score = 50
     
-    # Simple state machine or split
-    # Robust approach: Split by tokens
-    parts = text.split("---")
+    # Define section patterns - look for ---SECTION--- or just SECTION:
+    # Extract content between section headers
     
-    for i, part in enumerate(parts):
-        token = part.strip()
-        if token.startswith("SUMMARY"):
-            if i + 1 < len(parts):
-                summary = parts[i+1].strip()
-        elif token.startswith("BULL"):
-            if i + 1 < len(parts):
-                bull = parts[i+1].strip()
-        elif token.startswith("BEAR"):
-            if i + 1 < len(parts):
-                bear = parts[i+1].strip()
-        elif token.startswith("SENTIMENT") or token.startswith("TRADING") or "Trading Plan" in token or "PLAN" in token:
-            # Handle both "SENTIMENT" and "High Risk Trading Plan" / "TRADING PLAN"
-            if i + 1 < len(parts):
-                sentiment = parts[i+1].strip()
-        elif token.startswith("SCORE"):
-            try:
-                if i + 1 < len(parts):
-                    score_str = parts[i+1].strip()
-                    # Extract first integer found (handle "85 (High)" cases)
-                    import re
-                    match = re.search(r'\d+', score_str)
-                    if match:
-                        score = int(match.group())
-            except:
-                score = 50
-
+    # Try to find SUMMARY section
+    summary_match = re.search(r'---\s*SUMMARY\s*---\s*(.*?)(?=---\s*(?:BULL|BEAR|SENTIMENT|TRADING|SCORE|$))', text, re.DOTALL | re.IGNORECASE)
+    if summary_match:
+        summary = summary_match.group(1).strip()
+    
+    # Try to find BULL section  
+    bull_match = re.search(r'---\s*BULL\s*---\s*(.*?)(?=---\s*(?:BEAR|SENTIMENT|TRADING|SCORE|$))', text, re.DOTALL | re.IGNORECASE)
+    if bull_match:
+        bull = bull_match.group(1).strip()
+    
+    # Try to find BEAR section
+    bear_match = re.search(r'---\s*BEAR\s*---\s*(.*?)(?=---\s*(?:SENTIMENT|TRADING|SCORE|$))', text, re.DOTALL | re.IGNORECASE)
+    if bear_match:
+        bear = bear_match.group(1).strip()
+    
+    # Try to find SENTIMENT or TRADING PLAN section
+    sentiment_match = re.search(r'---\s*(?:SENTIMENT|TRADING\s*PLAN?|HIGH\s*RISK\s*TRADING\s*PLAN)\s*---\s*(.*?)(?=---\s*SCORE|$)', text, re.DOTALL | re.IGNORECASE)
+    if sentiment_match:
+        sentiment = sentiment_match.group(1).strip()
+    
+    # Try to find SCORE section
+    score_match = re.search(r'---\s*SCORE\s*---\s*(\d+)', text, re.IGNORECASE)
+    if score_match:
+        score = int(score_match.group(1))
+    else:
+        # Fallback: find any standalone number after SCORE
+        score_fallback = re.search(r'SCORE[:\s]*(\d+)', text, re.IGNORECASE)
+        if score_fallback:
+            score = int(score_fallback.group(1))
+    
     # Default sentiment if not found
     if not sentiment:
         sentiment = "Market sentiment is neutral/mixed."
-
+    
     # Fallback if parsing failed completely (LLM ignored instructions)
     if not summary:
-        summary = text # Return raw text as summary
+        summary = text  # Return raw text as summary
 
     return AnalysisResponse(
         ticker=ticker.upper(),
