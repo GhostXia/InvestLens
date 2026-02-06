@@ -16,7 +16,7 @@ import {
     DialogHeader,
     DialogTitle,
 } from "@/components/ui/dialog"
-import { Brain, Lock, ShieldAlert, Database } from "lucide-react"
+import { Brain, Lock, ShieldAlert, Database, Trash2 } from "lucide-react"
 import { DataSourceEditor } from "@/components/settings/DataSourceEditor"
 
 /**
@@ -27,8 +27,10 @@ import { DataSourceEditor } from "@/components/settings/DataSourceEditor"
  * 2. Quant Mode (High-risk features)
  */
 export default function SettingsPage() {
-    const { apiKey, setApiKey, baseUrl, setBaseUrl, model, setModel, quantModeEnabled, setQuantModeEnabled } = useSettingsStore()
+    const { apiKey, setApiKey, baseUrl, setBaseUrl, model, setModel, quantModeEnabled, setQuantModeEnabled, clearAll } = useSettingsStore()
     const [showRiskDialog, setShowRiskDialog] = useState(false)
+    const [showClearDialog, setShowClearDialog] = useState(false)
+    const [clearing, setClearing] = useState(false)
 
     // Local state for unsaved changes
     const [tempApiKey, setTempApiKey] = useState(apiKey)
@@ -94,6 +96,33 @@ export default function SettingsPage() {
         setModel(tempModel)
         setSaveSuccess(true)
         setTimeout(() => setSaveSuccess(false), 2000)
+    }
+
+    const handleClearAllData = async () => {
+        setClearing(true)
+        try {
+            // Clear frontend data
+            clearAll()
+            setTempApiKey("")
+            setTempBaseUrl("https://api.openai.com/v1")
+            setTempModel("gpt-4")
+
+            // Clear backend data
+            const response = await fetch("http://localhost:8000/privacy/clear-all", {
+                method: "POST"
+            })
+
+            if (response.ok) {
+                console.log("Backend privacy data cleared successfully")
+            } else {
+                console.error("Failed to clear backend data")
+            }
+        } catch (error) {
+            console.error("Error clearing privacy data:", error)
+        } finally {
+            setClearing(false)
+            setShowClearDialog(false)
+        }
     }
 
     return (
@@ -248,6 +277,41 @@ export default function SettingsPage() {
                     </CardContent>
                 </Card >
 
+                {/* Danger Zone - Privacy Data Cleanup */}
+                <Card className="border-l-4 border-l-red-600 bg-red-50 dark:bg-red-950/20">
+                    <CardHeader>
+                        <CardTitle className="flex items-center gap-2 text-red-600 dark:text-red-400">
+                            <Trash2 className="h-5 w-5" />
+                            Danger Zone
+                        </CardTitle>
+                        <CardDescription className="text-red-700 dark:text-red-300">
+                            Permanently delete all privacy-sensitive data. This action cannot be undone.
+                        </CardDescription>
+                    </CardHeader>
+                    <CardContent className="space-y-4">
+                        <div className="rounded-lg border border-red-300 dark:border-red-700 p-4 bg-white dark:bg-red-950/30">
+                            <h4 className="font-semibold text-sm mb-2">Clear All Privacy Data</h4>
+                            <p className="text-sm text-muted-foreground mb-4">
+                                This will permanently delete:
+                            </p>
+                            <ul className="text-sm text-muted-foreground list-disc pl-5 space-y-1 mb-4">
+                                <li>API Keys and endpoints (frontend)</li>
+                                <li>Model preferences (frontend)</li>
+                                <li>Data source configurations (backend)</li>
+                                <li>Quant Mode settings</li>
+                            </ul>
+                            <Button
+                                variant="destructive"
+                                onClick={() => setShowClearDialog(true)}
+                                disabled={clearing}
+                            >
+                                <Trash2 className="mr-2 h-4 w-4" />
+                                {clearing ? "Clearing..." : "Clear All Privacy Data"}
+                            </Button>
+                        </div>
+                    </CardContent>
+                </Card>
+
                 {/* Risk Disclaimer Dialog */}
                 < Dialog open={showRiskDialog} onOpenChange={setShowRiskDialog} >
                     <DialogContent>
@@ -286,6 +350,47 @@ export default function SettingsPage() {
                         </DialogFooter>
                     </DialogContent>
                 </Dialog >
+
+                {/* Clear Privacy Data Confirmation Dialog */}
+                <Dialog open={showClearDialog} onOpenChange={setShowClearDialog}>
+                    <DialogContent>
+                        <DialogHeader>
+                            <DialogTitle className="flex items-center gap-2 text-red-600">
+                                <Trash2 className="h-6 w-6" />
+                                Confirm Privacy Data Deletion
+                            </DialogTitle>
+                            <DialogDescription className="space-y-4 pt-4 text-foreground" asChild>
+                                <div className="space-y-4">
+                                    <p className="font-semibold">
+                                        Are you absolutely sure you want to delete ALL privacy data?
+                                    </p>
+                                    <p className="text-sm">
+                                        This action will <strong>permanently delete</strong>:
+                                    </p>
+                                    <ul className="list-disc pl-5 space-y-2 text-sm text-muted-foreground">
+                                        <li>
+                                            <strong>Frontend:</strong> API keys, base URLs, model preferences, Quant Mode settings
+                                        </li>
+                                        <li>
+                                            <strong>Backend:</strong> Data source configurations and API endpoint settings
+                                        </li>
+                                    </ul>
+                                    <p className="text-sm font-semibold text-red-600">
+                                        This action cannot be undone. You will need to reconfigure everything from scratch.
+                                    </p>
+                                </div>
+                            </DialogDescription>
+                        </DialogHeader>
+                        <DialogFooter>
+                            <Button variant="outline" onClick={() => setShowClearDialog(false)}>
+                                Cancel
+                            </Button>
+                            <Button variant="destructive" onClick={handleClearAllData} disabled={clearing}>
+                                {clearing ? "Clearing..." : "Yes, Delete Everything"}
+                            </Button>
+                        </DialogFooter>
+                    </DialogContent>
+                </Dialog>
             </div >
         </AppShell >
     )

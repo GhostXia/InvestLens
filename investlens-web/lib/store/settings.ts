@@ -10,6 +10,7 @@ interface SettingsState {
     setBaseUrl: (url: string) => void
     setModel: (model: string) => void
     setQuantModeEnabled: (enabled: boolean) => void
+    clearAll: () => void
 }
 
 /**
@@ -33,6 +34,12 @@ export const useSettingsStore = create<SettingsState>()(
             setBaseUrl: (url) => set({ baseUrl: url }),
             setModel: (model) => set({ model: model }),
             setQuantModeEnabled: (enabled) => set({ quantModeEnabled: enabled }),
+            clearAll: () => set({
+                apiKey: "",
+                baseUrl: "https://api.openai.com/v1",
+                model: "gpt-4",
+                quantModeEnabled: false
+            }),
         }),
         {
             name: 'investlens-settings', // name of the item in the storage (must be unique)

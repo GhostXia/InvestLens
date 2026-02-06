@@ -97,6 +97,53 @@ npm run dev
 
 ---
 
+## Privacy Data Cleanup / 隐私数据清理
+
+InvestLens provides multiple ways to completely remove all privacy-sensitive data from your system.
+*(InvestLens 提供多种方式完全清除系统中的所有隐私敏感数据。)*
+
+### Method 1: Settings UI (推荐 - Recommended)
+1. Open the application and navigate to **Settings**
+2. Scroll to the **Danger Zone** section (red card at bottom)
+3. Click **"Clear All Privacy Data"**
+4. Confirm in the dialog
+5. All data will be immediately deleted from both frontend and backend
+
+### Method 2: Cleanup Script
+We provide standalone scripts for batch cleanup without running the application.
+*(我们提供了独立脚本,无需运行应用即可批量清理。)*
+
+#### Windows:
+```bash
+# Run from project root
+.\clear_privacy_data.bat
+```
+
+#### Linux/Mac:
+```bash
+# Make executable first (one time only)
+chmod +x clear_privacy_data.sh
+
+# Run from project root
+./clear_privacy_data.sh
+```
+
+### What Gets Deleted (清理内容)
+- ✅ **Frontend (浏览器本地存储)**:
+  - API Keys and endpoints
+  - Model preferences
+  - Quant Mode settings
+  - All user preferences
+
+- ✅ **Backend (服务器配置文件)**:
+  - Data source configurations (`config/sources.json`)
+  - API endpoint settings
+
+> **⚠️ Warning**: This action is **permanent** and cannot be undone. You will need to reconfigure all settings after cleanup.
+> *(警告：此操作无法撤销,清理后需要重新配置所有设置。)*
+
+---
+
 ## Deployment / 部署指南
 
 ### Option 1: Docker Compose (Recommended)
