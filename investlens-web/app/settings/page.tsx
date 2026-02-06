@@ -16,7 +16,7 @@ import {
     DialogHeader,
     DialogTitle,
 } from "@/components/ui/dialog"
-import { Brain, Lock, ShieldAlert, Database, Trash2 } from "lucide-react"
+import { Brain, Lock, ShieldAlert, Database, Trash2, Search } from "lucide-react"
 import { DataSourceEditor } from "@/components/settings/DataSourceEditor"
 
 /**
@@ -27,7 +27,7 @@ import { DataSourceEditor } from "@/components/settings/DataSourceEditor"
  * 2. Quant Mode (High-risk features)
  */
 export default function SettingsPage() {
-    const { apiKey, setApiKey, baseUrl, setBaseUrl, model, setModel, quantModeEnabled, setQuantModeEnabled, clearAll } = useSettingsStore()
+    const { apiKey, setApiKey, baseUrl, setBaseUrl, model, setModel, quantModeEnabled, setQuantModeEnabled, ddgEnabled, setDdgEnabled, yahooEnabled, setYahooEnabled, clearAll } = useSettingsStore()
     const [showRiskDialog, setShowRiskDialog] = useState(false)
     const [showClearDialog, setShowClearDialog] = useState(false)
     const [clearing, setClearing] = useState(false)
@@ -244,6 +244,48 @@ export default function SettingsPage() {
                                 </span>
                             )}
                         </div>
+                    </CardContent>
+                </Card>
+
+                {/* Search Provider Section */}
+                <Card>
+                    <CardHeader>
+                        <CardTitle className="flex items-center gap-2">
+                            <Search className="h-5 w-5 text-green-500" />
+                            Search Configuration
+                        </CardTitle>
+                        <CardDescription>
+                            Enable multiple search providers for parallel autocomplete suggestions.
+                        </CardDescription>
+                    </CardHeader>
+                    <CardContent className="space-y-4">
+                        <div className="flex items-center justify-between py-2">
+                            <div className="space-y-0.5">
+                                <Label className="text-base">DuckDuckGo</Label>
+                                <p className="text-sm text-muted-foreground">
+                                    General web search suggestions
+                                </p>
+                            </div>
+                            <Switch
+                                checked={ddgEnabled}
+                                onCheckedChange={setDdgEnabled}
+                            />
+                        </div>
+                        <div className="flex items-center justify-between py-2">
+                            <div className="space-y-0.5">
+                                <Label className="text-base">Yahoo Finance</Label>
+                                <p className="text-sm text-muted-foreground">
+                                    Precise financial tickers with market info
+                                </p>
+                            </div>
+                            <Switch
+                                checked={yahooEnabled}
+                                onCheckedChange={setYahooEnabled}
+                            />
+                        </div>
+                        <p className="text-xs text-muted-foreground pt-2 border-t">
+                            Results from each provider will be labeled (DDG / Yahoo).
+                        </p>
                     </CardContent>
                 </Card>
 

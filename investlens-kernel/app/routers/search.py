@@ -79,36 +79,47 @@ def search_news(
         raise HTTPException(status_code=500, detail=f"新闻搜索失败: {str(e)}")
 
 @router.get("/suggestions")
-def get_suggestions(
-    query: str = Query(..., description="搜索关键词（部分）")
+async def get_suggestions(
+    query: str = Query(..., description="搜索关键词（部分）"),
+    provider: str = Query("duckduckgo", description="搜索提供商: duckduckgo 或 yahoo")
 ) -> Dict[str, Any]:
     """
-    DuckDuckGo 搜索建议（联想）
+    搜索建议（联想）端点
     
-    根据输入的部分关键词，返回搜索建议列表。
-    类似于搜索框的自动完成功能。
+    支持多个搜索提供商：
+    - duckduckgo: 通用搜索建议（返回搜索词，需要二次查询）
+    - yahoo: Yahoo Finance 金融搜索（返回标准 ticker，可直接使用）
     
     Args:
         query: 部分搜索关键词
+        provider: 搜索提供商（默认: duckduckgo）
         
     Returns:
-        包含建议关键词的字典
+        包含建议列表的字典
     """
     try:
-        logger.info(f"Getting suggestions for: '{query}'")
+        logger.info(f"Getting suggestions for: '{query}' using provider: {provider}")
         
-        with DDGS() as ddgs:
-            suggestions = list(ddgs.suggestions(query))
+        # Import search providers service
+        # pyre-ignore[21]: app.services not found
+        from app.services.search_providers import get_suggestions, SearchProvider
         
-        # Extract just the suggestion phrases
-        suggestion_phrases = [s.get('phrase', '') for s in suggestions if s.get('phrase')]
+        # Validate and normalize provider
+        if provider.lower() == "yahoo":
+            selected_provider = SearchProvider.YAHOO_FINANCE
+        else:
+            selected_provider = SearchProvider.DUCKDUCKGO
         
-        logger.info(f"Found {len(suggestion_phrases)} suggestions for '{query}'")
+        # Get suggestions from selected provider
+        suggestions = await get_suggestions(query, selected_provider)
+        
+        logger.info(f"Found {len(suggestions)} suggestions from {provider}")
         
         return {
             "query": query,
-            "count": len(suggestion_phrases),
-            "suggestions": suggestion_phrases
+            "provider": provider,
+            "count": len(suggestions),
+            "suggestions": suggestions
         }
     except Exception as e:
         logger.error(f"Suggestions failed: {str(e)}")

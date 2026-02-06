@@ -6,10 +6,14 @@ interface SettingsState {
     baseUrl: string
     model: string
     quantModeEnabled: boolean
+    ddgEnabled: boolean
+    yahooEnabled: boolean
     setApiKey: (key: string) => void
     setBaseUrl: (url: string) => void
     setModel: (model: string) => void
     setQuantModeEnabled: (enabled: boolean) => void
+    setDdgEnabled: (enabled: boolean) => void
+    setYahooEnabled: (enabled: boolean) => void
     clearAll: () => void
 }
 
@@ -30,19 +34,25 @@ export const useSettingsStore = create<SettingsState>()(
             baseUrl: "https://api.openai.com/v1",
             model: "gpt-4",
             quantModeEnabled: false,
+            ddgEnabled: true,
+            yahooEnabled: true,
             setApiKey: (key) => set({ apiKey: key }),
             setBaseUrl: (url) => set({ baseUrl: url }),
             setModel: (model) => set({ model: model }),
             setQuantModeEnabled: (enabled) => set({ quantModeEnabled: enabled }),
+            setDdgEnabled: (enabled) => set({ ddgEnabled: enabled }),
+            setYahooEnabled: (enabled) => set({ yahooEnabled: enabled }),
             clearAll: () => set({
                 apiKey: "",
                 baseUrl: "https://api.openai.com/v1",
                 model: "gpt-4",
-                quantModeEnabled: false
+                quantModeEnabled: false,
+                ddgEnabled: true,
+                yahooEnabled: true
             }),
         }),
         {
-            name: 'investlens-settings', // name of the item in the storage (must be unique)
+            name: 'investlens-settings',
         }
     )
 )

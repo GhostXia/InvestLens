@@ -8,6 +8,8 @@ import { useState, useRef, useEffect } from "react"
 import { useRouter } from "next/navigation"
 import { getApiUrl } from "@/lib/api-config"
 
+import { useSettingsStore } from "@/lib/store/settings"
+
 /**
  * AssetInput Component
  * 
@@ -59,26 +61,50 @@ export function AssetInput() {
         debounceRef.current = setTimeout(async () => {
             setLoading(true)
             try {
-                // Fetch both asset search and DuckDuckGo suggestions in parallel
-                const [assetRes, ddgRes] = await Promise.all([
-                    fetch(getApiUrl(`/api/v1/search?q=${encodeURIComponent(value)}`)),
-                    fetch(getApiUrl(`/search/suggestions?query=${encodeURIComponent(value)}`))
-                ])
+                // Get enabled search providers from store
+                const { ddgEnabled, yahooEnabled } = useSettingsStore.getState()
 
-                const assetData = assetRes.ok ? await assetRes.json() : { results: [] }
-                const ddgData = ddgRes.ok ? await ddgRes.json() : { suggestions: [] }
+                // Build list of fetch promises based on enabled providers
+                const fetchPromises: Promise<Response>[] = [
+                    // Always fetch asset search
+                    fetch(getApiUrl(`/api/v1/search?q=${encodeURIComponent(value)}`))
+                ]
 
-                // Combine: Asset search results first, then DuckDuckGo suggestions
+                // Add enabled provider fetches
+                if (ddgEnabled) {
+                    fetchPromises.push(
+                        fetch(getApiUrl(`/search/suggestions?query=${encodeURIComponent(value)}&provider=duckduckgo`))
+                    )
+                }
+                if (yahooEnabled) {
+                    fetchPromises.push(
+                        fetch(getApiUrl(`/search/suggestions?query=${encodeURIComponent(value)}&provider=yahoo`))
+                    )
+                }
+
+                const responses = await Promise.all(fetchPromises)
+
+                // Parse asset search results
+                const assetData = responses[0].ok ? await responses[0].json() : { results: [] }
                 const assetResults = assetData.results || []
-                const ddgSuggestions = (ddgData.suggestions || [])
-                    .filter((s: string) => !assetResults.some((r: any) => r.ticker?.toUpperCase() === s.toUpperCase()))
-                    .map((s: string) => ({
-                        ticker: s,
-                        name: `${s} (Search suggestion)`,
-                        isDdg: true
-                    }))
 
-                setResults([...assetResults, ...ddgSuggestions].slice(0, 10))
+                // Parse provider results (offset by 1 due to asset search being first)
+                let allSuggestions: any[] = []
+                let responseIndex = 1
+
+                if (ddgEnabled && responses[responseIndex]) {
+                    const ddgData = responses[responseIndex].ok ? await responses[responseIndex].json() : { suggestions: [] }
+                    allSuggestions = [...allSuggestions, ...(ddgData.suggestions || [])]
+                    responseIndex++
+                }
+
+                if (yahooEnabled && responses[responseIndex]) {
+                    const yahooData = responses[responseIndex].ok ? await responses[responseIndex].json() : { suggestions: [] }
+                    allSuggestions = [...allSuggestions, ...(yahooData.suggestions || [])]
+                }
+
+                // Combine: Asset search results first, then all provider suggestions
+                setResults([...assetResults, ...allSuggestions].slice(0, 15))
             } catch (error) {
                 console.error("Search failed:", error)
             } finally {
@@ -88,9 +114,23 @@ export function AssetInput() {
     }
 
     const selectResult = (item: any) => {
-        setQuery(item.ticker)
-        setShowResults(false)
-        router.push(`/analysis?ticker=${encodeURIComponent(item.ticker)}`)
+        if (item.isDdg) {
+            // For DDG suggestions: fill search box and trigger search
+            // This allows users to see actual asset results instead of navigating to a non-existent ticker
+            setQuery(item.ticker)
+            handleSearchChange(item.ticker)
+            // Keep dropdown open to show search results
+        } else if (item.isYahoo) {
+            // For Yahoo Finance suggestions: navigate directly (valid ticker)
+            setQuery(item.ticker)
+            setShowResults(false)
+            router.push(`/analysis?ticker=${encodeURIComponent(item.ticker)}`)
+        } else {
+            // For asset search results: navigate directly to analysis page
+            setQuery(item.ticker)
+            setShowResults(false)
+            router.push(`/analysis?ticker=${encodeURIComponent(item.ticker)}`)
+        }
     }
 
     const handleSearch = (e: React.FormEvent) => {
@@ -145,6 +185,11 @@ export function AssetInput() {
                                 <div className="text-right">
                                     {item.isDdg ? (
                                         <div className="text-xs font-mono bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 px-1.5 py-0.5 rounded">DDG</div>
+                                    ) : item.isYahoo ? (
+                                        <>
+                                            <div className="text-xs font-mono bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-300 px-1.5 py-0.5 rounded">Yahoo</div>
+                                            <div className="text-[10px] text-muted-foreground mt-0.5">{item.exchange}</div>
+                                        </>
                                     ) : (
                                         <>
                                             <div className="text-xs font-mono bg-muted px-1.5 py-0.5 rounded">{item.asset_type || 'Asset'}</div>
