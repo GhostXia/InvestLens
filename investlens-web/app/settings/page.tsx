@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { useSettingsStore } from "@/lib/store/settings"
 import { AppShell } from "@/components/layout/app-shell"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
@@ -42,6 +42,21 @@ export default function SettingsPage() {
     const [availableModels, setAvailableModels] = useState<Array<{ id: string, name: string }>>([])
     const [fetchingModels, setFetchingModels] = useState(false)
     const [modelsFetched, setModelsFetched] = useState(false)
+
+    // Sync local state with store on hydration/updates
+    // This fixes the issue where SSR initial state ("") overrides persisted client state
+    useEffect(() => {
+        setTempApiKey(apiKey)
+        setTempBaseUrl(baseUrl)
+        setTempModel(model)
+    }, [apiKey, baseUrl, model])
+
+    // Load available models if base URL is present
+    useEffect(() => {
+        if (availableModels.length === 0 && baseUrl) {
+            // Optional: could auto-fetch here, but manual fetch is safer to avoid spamming
+        }
+    }, [baseUrl])
 
     const handleQuantToggle = (checked: boolean) => {
         if (checked) {
