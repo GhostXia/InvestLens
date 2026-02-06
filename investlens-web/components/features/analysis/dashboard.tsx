@@ -31,7 +31,7 @@ interface AnalysisDashboardProps {
  * @returns {JSX.Element} The dashboard grid layout
  */
 export function AnalysisDashboard({ ticker }: AnalysisDashboardProps) {
-    const { quantModeEnabled, apiKey, baseUrl, model } = useSettingsStore()
+    const { quantModeEnabled, apiKey, baseUrl, model, modelConfigs } = useSettingsStore()
     const [marketData, setMarketData] = useState<any>(null)
     const [analysis, setAnalysis] = useState<any>(null)
     const [fundamentals, setFundamentals] = useState<any>(null)
@@ -56,15 +56,20 @@ export function AnalysisDashboard({ ticker }: AnalysisDashboardProps) {
                 setLoading(false) // Header can show now
 
                 // 2. Fetch Consensus Analysis
-                const headers = {
+                // Filter to only enabled model configs
+                const enabledConfigs = modelConfigs.filter(c => c.enabled)
+
+                const headers: Record<string, string> = {
                     "Content-Type": "application/json",
                     ...(apiKey && { "X-LLM-API-Key": apiKey }),
                     ...(baseUrl && { "X-LLM-Base-URL": baseUrl }),
                     ...(model && { "X-LLM-Model": model }),
-                    ...(quantModeEnabled && { "X-Quant-Mode": "true" })
+                    ...(quantModeEnabled && { "X-Quant-Mode": "true" }),
+                    // Send multi-model configs if any are enabled
+                    ...(enabledConfigs.length > 0 && { "X-Model-Configs": JSON.stringify(enabledConfigs) })
                 }
 
-                console.log("Sending API request with headers:", { hasApiKey: !!apiKey, hasBaseUrl: !!baseUrl, hasModel: !!model, baseUrl, model, quantMode: quantModeEnabled })
+                console.log("Sending API request with headers:", { hasApiKey: !!apiKey, hasBaseUrl: !!baseUrl, hasModel: !!model, baseUrl, model, quantMode: quantModeEnabled, multiModelCount: enabledConfigs.length })
 
                 // Start analysis and fundamentals fetched in parallel or sequence
 
@@ -281,7 +286,7 @@ export function AnalysisDashboard({ ticker }: AnalysisDashboardProps) {
                         <CardHeader>
                             <CardTitle className="text-base flex items-center gap-2 text-primary">
                                 <MessageSquare className="h-4 w-4" />
-                                Analyst Advice
+                                {quantModeEnabled ? "High Risk Trading Plan" : "Analyst Advice"}
                             </CardTitle>
                         </CardHeader>
                         <CardContent>

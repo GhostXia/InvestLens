@@ -1,0 +1,40 @@
+2026-02-06 18:53:05,601 - app.database.models - INFO - Database initialized at E:\InvestLens\investlens-kernel\data\assets.db
+2026-02-06 18:53:11,030 - app.services.providers.akshare_impl - ERROR - Failed to fetch real-time data: ('Connection aborted.', RemoteDisconnected('Remote end closed connection without response'))
+2026-02-06 18:53:11,262 - app.services.providers.akshare_impl - ERROR - AkShare fallback failed: ('Connection aborted.', RemoteDisconnected('Remote end closed connection without response'))
+2026-02-06 18:53:11,944 - app.services.providers.akshare_impl - WARNING - Fund info fetch failed: 'data'
+--- Starting Consensus Test for 600519 ---
+WARNING: No LLM_API_KEY found, using Mock Fallback.
+DEBUG: Fetching ak.stock_info_a_code_name()...
+  0%|          | 0/15 [00:00<?, ?it/s]  7%|▋         | 1/15 [00:00<00:06,  2.32it/s] 13%|█▎        | 2/15 [00:00<00:05,  2.35it/s] 20%|██        | 3/15 [00:01<00:05,  2.35it/s] 27%|██▋       | 4/15 [00:01<00:04,  2.41it/s] 33%|███▎      | 5/15 [00:02<00:05,  1.79it/s] 40%|████      | 6/15 [00:03<00:05,  1.63it/s] 47%|████▋     | 7/15 [00:03<00:04,  1.71it/s] 53%|█████▎    | 8/15 [00:04<00:04,  1.68it/s] 60%|██████    | 9/15 [00:04<00:03,  1.68it/s] 67%|██████▋   | 10/15 [00:05<00:02,  1.89it/s] 73%|███████▎  | 11/15 [00:05<00:01,  2.10it/s] 80%|████████  | 12/15 [00:06<00:01,  2.18it/s] 87%|████████▋ | 13/15 [00:06<00:00,  2.35it/s] 93%|█████████▎| 14/15 [00:06<00:00,  2.45it/s]100%|██████████| 15/15 [00:07<00:00,  2.42it/s]                                               2026-02-06 18:53:33,632 - app.services.search_service - INFO - Searching web for: 600519 stock news analysis sentiment
+E:\InvestLens\investlens-kernel\app\services\search_service.py:29: RuntimeWarning: This package (`duckduckgo_search`) has been renamed to `ddgs`! Use `pip install ddgs` instead.
+  with DDGS() as ddgs:
+2026-02-06 18:53:34,601 - primp - INFO - response: https://www.bing.com/search?q=600519+stock+news+analysis+sentiment 200
+2026-02-06 18:53:34,697 - app.services.search_service - INFO - Found 0 web results
+2026-02-06 18:53:34,698 - app.services.consensus - INFO - Starting Consensus Analysis for 600519...
+2026-02-06 18:53:34,698 - app.services.consensus - INFO - Executing Stage 1a: The Bull Persona
+2026-02-06 18:53:34,698 - app.services.llm_provider - INFO - Calling LLM: gpt-3.5-turbo at https://api.openai.com/v1
+2026-02-06 18:53:35,982 - httpx - INFO - HTTP Request: POST https://api.openai.com/v1/chat/completions "HTTP/1.1 401 Unauthorized"
+2026-02-06 18:53:35,983 - app.services.llm_provider - ERROR - LLM Generation Failed: Error code: 401 - {'error': {'message': 'Incorrect API key provided: sk-place**lder. You can find your API key at https://platform.openai.com/account/api-keys.', 'type': 'invalid_request_error', 'code': 'invalid_api_key', 'param': None}, 'status': 401}
+2026-02-06 18:53:35,983 - app.services.llm_provider - WARNING - Using Mock Fallback Response
+2026-02-06 18:53:35,983 - app.services.consensus - INFO - Executing Stage 1b: The Bear Persona
+2026-02-06 18:53:35,983 - app.services.llm_provider - INFO - Calling LLM: gpt-3.5-turbo at https://api.openai.com/v1
+2026-02-06 18:53:36,302 - httpx - INFO - HTTP Request: POST https://api.openai.com/v1/chat/completions "HTTP/1.1 401 Unauthorized"
+2026-02-06 18:53:36,302 - app.services.llm_provider - ERROR - LLM Generation Failed: Error code: 401 - {'error': {'message': 'Incorrect API key provided: sk-place**lder. You can find your API key at https://platform.openai.com/account/api-keys.', 'type': 'invalid_request_error', 'code': 'invalid_api_key', 'param': None}, 'status': 401}
+2026-02-06 18:53:36,302 - app.services.llm_provider - WARNING - Using Mock Fallback Response
+2026-02-06 18:53:36,302 - app.services.consensus - INFO - Executing Stage 2: The Judge (Consensus)
+2026-02-06 18:53:36,302 - app.services.llm_provider - INFO - Calling LLM: gpt-3.5-turbo at https://api.openai.com/v1
+2026-02-06 18:53:36,693 - httpx - INFO - HTTP Request: POST https://api.openai.com/v1/chat/completions "HTTP/1.1 401 Unauthorized"
+2026-02-06 18:53:36,693 - app.services.llm_provider - ERROR - LLM Generation Failed: Error code: 401 - {'error': {'message': 'Incorrect API key provided: sk-place**lder. You can find your API key at https://platform.openai.com/account/api-keys.', 'type': 'invalid_request_error', 'code': 'invalid_api_key', 'param': None}, 'status': 401}
+2026-02-06 18:53:36,693 - app.services.llm_provider - WARNING - Using Mock Fallback Response
+DEBUG: Fetched 5479 rows. Columns: ['code', 'name']
+DEBUG: Map created with 5479 entries. Sample: [('000001', '平安银行'), ('000002', '万  科Ａ'), ('000004', '*ST国华'), ('000006', '深振业Ａ'), ('000007', '全新好')]
+
+=== FINAL RESULT ===
+Score: 50
+Summary: **[MOCK ANALYSIS - LLM Connection Failed]**
+
+Unable to connect to the configured AI Provider.
+Please...
+Bull: ...
+Bear: ...
+Sentiment/Plan: Market sentiment is neutral/mixed....

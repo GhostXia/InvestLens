@@ -210,7 +210,8 @@ def analyze_asset(
     x_llm_api_key: str | None = Header(default=None),
     x_llm_base_url: str | None = Header(default=None),
     x_llm_model: str | None = Header(default=None),
-    x_quant_mode: str | None = Header(default=None, alias="X-Quant-Mode")
+    x_quant_mode: str | None = Header(default=None, alias="X-Quant-Mode"),
+    x_model_configs: str | None = Header(default=None, alias="X-Model-Configs")
 ):
     """
     Consensus Analysis Endpoint
@@ -225,10 +226,13 @@ def analyze_asset(
         x_llm_api_key (str, optional): The user's BYO-API key from frontend settings.
         x_llm_base_url (str, optional): The user's custom Base URL for the LLM provider.
         x_llm_model (str, optional): The model to use for generation.
+        x_model_configs (str, optional): JSON-encoded array of ModelConfig objects for multi-model consensus.
         
     Returns:
         AnalysisResponse: The AI report.
     """
+    import json
+    
     try:
         logger.info(f"Received analysis request for {request.ticker}")
         logger.info(f"API Key provided: {bool(x_llm_api_key)}")
@@ -237,13 +241,25 @@ def analyze_asset(
         
         quant_mode_enabled = x_quant_mode == "true"
         
+        # Parse multi-model configs if provided
+        model_configs = None
+        if x_model_configs:
+            try:
+                model_configs = json.loads(x_model_configs)
+                # Filter to only enabled configs
+                model_configs = [c for c in model_configs if c.get("enabled", True)]
+                logger.info(f"Multi-model configs: {len(model_configs)} enabled providers")
+            except json.JSONDecodeError:
+                logger.warning("Failed to parse X-Model-Configs header")
+        
         response = consensus.generate_consensus_analysis(
             ticker=request.ticker,
             focus_areas=request.focus_areas,
             api_key=x_llm_api_key,
             base_url=x_llm_base_url,
             model=x_llm_model,
-            quant_mode=quant_mode_enabled
+            quant_mode=quant_mode_enabled,
+            model_configs=model_configs
         )
         return response
     except Exception as e:

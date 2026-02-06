@@ -18,6 +18,7 @@ import {
 } from "@/components/ui/dialog"
 import { Brain, Lock, ShieldAlert, Database, Trash2, Search } from "lucide-react"
 import { DataSourceEditor } from "@/components/settings/DataSourceEditor"
+import { ModelConfigEditor } from "@/components/settings/ModelConfigEditor"
 
 /**
  * Settings Page
@@ -54,7 +55,7 @@ export default function SettingsPage() {
     // Load available models if base URL is present
     useEffect(() => {
         if (availableModels.length === 0 && baseUrl) {
-            // Optional: could auto-fetch here, but manual fetch is safer to avoid spamming
+            fetchAvailableModels()
         }
     }, [baseUrl])
 
@@ -94,12 +95,7 @@ export default function SettingsPage() {
             }
         } catch (error) {
             console.error("Failed to fetch models:", error)
-            // Set default models on error
-            setAvailableModels([
-                { id: "gpt-4", name: "GPT-4" },
-                { id: "gpt-3.5-turbo", name: "GPT-3.5 Turbo" },
-                { id: "deepseek-chat", name: "DeepSeek Chat" },
-            ])
+            setAvailableModels([])
         } finally {
             setFetchingModels(false)
         }
@@ -185,43 +181,28 @@ export default function SettingsPage() {
                         </div>
                         <div className="grid w-full max-w-sm items-center gap-1.5">
                             <Label htmlFor="model">Model</Label>
-                            {modelsFetched && availableModels.length > 0 ? (
-                                <select
-                                    id="model"
-                                    className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
-                                    value={tempModel}
-                                    onChange={(e) => setTempModel(e.target.value)}
-                                >
-                                    {availableModels.map(m => (
-                                        <option key={m.id} value={m.id}>{m.name}</option>
-                                    ))}
-                                    <option value="custom">Custom (Enter Below)</option>
-                                </select>
-                            ) : (
-                                <select
-                                    id="model"
-                                    className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
-                                    value={tempModel}
-                                    onChange={(e) => setTempModel(e.target.value)}
-                                >
-                                    <optgroup label="OpenAI">
-                                        <option value="gpt-4">GPT-4</option>
-                                        <option value="gpt-4-turbo">GPT-4 Turbo</option>
-                                        <option value="gpt-3.5-turbo">GPT-3.5 Turbo</option>
-                                    </optgroup>
-                                    <optgroup label="DeepSeek">
-                                        <option value="deepseek-chat">DeepSeek Chat</option>
-                                        <option value="deepseek-reasoner">DeepSeek Reasoner</option>
-                                    </optgroup>
-                                    <optgroup label="Local Models">
-                                        <option value="qwen2.5">Qwen 2.5</option>
-                                        <option value="llama3.1">Llama 3.1</option>
-                                        <option value="mistral">Mistral</option>
-                                        <option value="gemma2">Gemma 2</option>
-                                    </optgroup>
-                                    <option value="custom">Custom (Enter Below)</option>
-                                </select>
-                            )}
+                            {/* Always show dropdown if we have models, otherwise show empty select that prompts to fetch or use custom */}
+                            <select
+                                id="model"
+                                className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+                                value={tempModel}
+                                onChange={(e) => setTempModel(e.target.value)}
+                            >
+                                {availableModels.map(m => (
+                                    <option key={m.id} value={m.id}>{m.name}</option>
+                                ))}
+
+                                {/* Lock: Always show the persisted model if it's not in the list yet */}
+                                {tempModel && tempModel !== 'custom' && !availableModels.some(m => m.id === tempModel) && (
+                                    <option value={tempModel}>{tempModel} (Saved)</option>
+                                )}
+
+                                {availableModels.length === 0 && !tempModel && (
+                                    <option value="" disabled>No models fetched</option>
+                                )}
+
+                                <option value="custom">Custom (Enter Below)</option>
+                            </select>
                             {tempModel === 'custom' && (
                                 <Input
                                     type="text"
@@ -318,6 +299,9 @@ export default function SettingsPage() {
 
                 {/* Data Sources Section */}
                 <DataSourceEditor />
+
+                {/* AI Model Providers Section */}
+                <ModelConfigEditor />
 
                 {/* Quant Mode Section */}
                 <Card className={`border-l-4 ${quantModeEnabled ? 'border-l-red-500' : 'border-l-gray-300'}`}>

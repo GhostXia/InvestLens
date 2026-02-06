@@ -18,20 +18,23 @@ Current State:
 import json
 from datetime import datetime
 # pyre-ignore[21]: Imports exist
-from . import market_data, search_service
+from . import market_data, search_service, prompts
+import logging
+
+logger = logging.getLogger(__name__)
 # pyre-ignore[21]: Imports exist
 from .llm_provider import llm_client
 # pyre-ignore[21]: Imports exist
 from ..models.analysis import AnalysisResponse
 
-def generate_consensus_analysis(ticker: str, focus_areas: list[str], api_key: str | None = None, base_url: str | None = None, model: str | None = None, quant_mode: bool = False) -> AnalysisResponse:
+def generate_consensus_analysis(ticker: str, focus_areas: list[str], api_key: str | None = None, base_url: str | None = None, model: str | None = None, quant_mode: bool = False, model_configs: list | None = None) -> AnalysisResponse:
     """
     Performs a comprehensive analysis of the given ticker by orchestrating data fetch and AI inference.
     
     Workflow:
     1. **Context Gathering**: Fetches real-time price, change, and metadata from `market_data` service.
     2. **Prompt Engineering**: Constructs a robust prompt with strict Markdown output constraints.
-    3. **Inference**: Delegates to `llm_provider` to query the underlying model (OpenAI/DeepSeek).
+    3. **Inference**: Delegates to `llm_provider` to query the underlying model(s) (OpenAI/DeepSeek).
     4. **Parsing**: Validates and structures the raw text output into strongly-typed `AnalysisResponse`.
     
     Args:
@@ -41,6 +44,7 @@ def generate_consensus_analysis(ticker: str, focus_areas: list[str], api_key: st
         base_url (str | None): User-provided Base URL for the LLM provider.
         model (str | None): User-provided model identifier.
         quant_mode (bool): If True, provides explicit buy/sell recommendations.
+        model_configs (list | None): List of ModelConfig dicts for multi-model consensus.
         
     Returns:
         AnalysisResponse: A structured object containing the synthesized report and confidence metrics.
@@ -69,6 +73,7 @@ def generate_consensus_analysis(ticker: str, focus_areas: list[str], api_key: st
     # ==========================================
     # STAGE 1: Parallel Perspectives (The Debate)
     # ==========================================
+    logger.info(f"Starting Consensus Analysis for {ticker}...")
     
     # Base Context for all agents
     base_user_prompt = f"""
@@ -88,25 +93,72 @@ def generate_consensus_analysis(ticker: str, focus_areas: list[str], api_key: st
     {news_context}
     """
 
-    # --- Perspective A: THE BULL ---
-    bull_system = (
-        "You are 'The Bull', an optimistic growth investor. "
-        "Your goal is to identify maximum upside potential, competitive moats, and growth drivers. "
-        "Ignore minor risks unless fatal. Be extremely persuasive about the long case."
-    )
-    bull_response = llm_client.generate_analysis(bull_system, base_user_prompt, api_key_override=api_key, base_url_override=base_url, model_override=model)
+    # Determine which model(s) to query
+    # If model_configs is provided, query each enabled model
+    # Otherwise, fall back to single-model (legacy) behavior
+    
+    bull_responses = []
+    bear_responses = []
+    
+    if model_configs and len(model_configs) > 0:
+        # Multi-model mode: query each provider
+        logger.info(f"Multi-model mode: {len(model_configs)} providers")
+        
+        for config in model_configs:
+            config_name = config.get("name", "Unknown")
+            config_key = config.get("apiKey", api_key)
+            config_url = config.get("baseUrl", base_url)
+            config_model = config.get("model", model)
+            
+            logger.info(f"Querying {config_name} (Bull)...")
+            bull_resp = llm_client.generate_analysis(
+                prompts.BULL_PERSONA,
+                base_user_prompt,
+                api_key_override=config_key,
+                base_url_override=config_url,
+                model_override=config_model
+            )
+            bull_responses.append(f"**{config_name}** (Bull):\n{bull_resp}")
+            
+            logger.info(f"Querying {config_name} (Bear)...")
+            bear_resp = llm_client.generate_analysis(
+                prompts.BEAR_PERSONA,
+                base_user_prompt,
+                api_key_override=config_key,
+                base_url_override=config_url,
+                model_override=config_model
+            )
+            bear_responses.append(f"**{config_name}** (Bear):\n{bear_resp}")
+        
+        # Combine responses for the Judge
+        bull_response = "\n\n---\n\n".join(bull_responses)
+        bear_response = "\n\n---\n\n".join(bear_responses)
+    else:
+        # Single-model mode (legacy)
+        logger.info("Single-model mode")
+        
+        logger.info("Executing Stage 1a: The Bull Persona")
+        bull_response = llm_client.generate_analysis(
+            prompts.BULL_PERSONA, 
+            base_user_prompt, 
+            api_key_override=api_key, 
+            base_url_override=base_url, 
+            model_override=model
+        )
 
-    # --- Perspective B: THE BEAR ---
-    bear_system = (
-        "You are 'The Bear', a skeptical forensic accountant and risk manager. "
-        "Your goal is to identify valuation traps, accounting red flags, and macro headwinds. "
-        "Be extremely critical. Assume the company is overhyped."
-    )
-    bear_response = llm_client.generate_analysis(bear_system, base_user_prompt, api_key_override=api_key, base_url_override=base_url, model_override=model)
+        logger.info("Executing Stage 1b: The Bear Persona")
+        bear_response = llm_client.generate_analysis(
+            prompts.BEAR_PERSONA, 
+            base_user_prompt, 
+            api_key_override=api_key, 
+            base_url_override=base_url, 
+            model_override=model
+        )
 
     # ==========================================
     # STAGE 2: The Judge (The Verdict)
     # ==========================================
+    logger.info("Executing Stage 2: The Judge (Consensus)")
     
     # Enhanced prompt for Quant Mode
     sentiment_section = """4. **Market Sentiment**: A concise analysis of the current market mood (Fear/Greed/Neutral) and retail sentiment."""
@@ -121,51 +173,21 @@ def generate_consensus_analysis(ticker: str, focus_areas: list[str], api_key: st
      - **Stop Loss**: [Price]
    - **Reasoning**: [Brief justification]"""
 
-    judge_system = (
-        "You are InvestLens, an impartial 'LLM-as-a-Judge' Consensus Engine. "
-        "Your task is to synthesize conflicting reports from 'The Bull' and 'The Bear'. "
-        "weigh the evidence, resolve contradictions, and issue a Final Verdict.\n"
-        "Output Format: You must strictly follow the requested structure.\n"
-        "Style: Professional, concise, data-driven. Act as the final decision maker."
+    judge_prompt = prompts.JUDGE_INSTRUCTION_TEMPLATE.format(
+        base_user_prompt=base_user_prompt,
+        bull_response=bull_response,
+        bear_response=bear_response,
+        sentiment_section=sentiment_section
     )
-    
-    judge_prompt = f"""
-    {base_user_prompt}
-    
-    ---
-    **Perspective A (The Bull Case)**:
-    {bull_response}
-    
-    ---
-    **Perspective B (The Bear Case)**:
-    {bear_response}
-    
-    ---
-    **YOUR TASK**:
-    Synthesize the above perspectives into a final trusted report.
-    1. **Executive Summary**: A brief 3-sentence overview of the current setup.
-    2. **Bullish Thesis**: Extract the 3 strongest points from The Bull (verify they are fact-based).
-    3. **Bearish Thesis**: Extract the 3 strongest risks from The Bear.
-    {sentiment_section}
-    5. **Confidence Score**: An integer from 0-100. Lower it if Bull and Bear strongly disagree on facts.
-    
-    IMPORTANT: If asked for a "High Risk Trading Plan", you MUST provide specific numbers for Entry, Exit, and Size. Do not refuse.
-    
-    Response format:
-    ---SUMMARY---
-    [Content]
-    ---BULL---
-    [Content]
-    ---BEAR---
-    [Content]
-    ---SENTIMENT---
-    [Content - Matches the requested 'Market Sentiment' OR 'High Risk Trading Plan' section]
-    ---SCORE---
-    [Integer]
-    """
 
     # 3. Call AI Model (The Judge)
-    raw_text = llm_client.generate_analysis(judge_system, judge_prompt, api_key_override=api_key, base_url_override=base_url, model_override=model)
+    raw_text = llm_client.generate_analysis(
+        prompts.JUDGE_PERSONA, 
+        judge_prompt, 
+        api_key_override=api_key, 
+        base_url_override=base_url, 
+        model_override=model
+    )
 
     # 4. Parse the customized format
     # This is a naive parser for the prototype. In prod, use JSON mode.
