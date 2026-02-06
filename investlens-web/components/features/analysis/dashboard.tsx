@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react"
 import { TickerHeader } from "@/components/features/analysis/header"
 import { PriceChart } from "@/components/features/analysis/price-chart"
+import { ChatBubble } from "@/components/features/analysis/chat-bubble"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Skeleton } from "@/components/ui/skeleton"
@@ -236,6 +237,17 @@ export function AnalysisDashboard({ ticker }: AnalysisDashboardProps) {
                     </Card>
                 </div>
             </div>
+
+            {/* Floating Chat Bubble */}
+            <ChatBubble
+                ticker={ticker}
+                tickerName={marketData?.name}
+                price={marketData?.price}
+                change={marketData?.change}
+                changePercent={marketData?.change_percent}
+                currency={marketData?.currency}
+                dataSource={marketData?.data_source}
+            />
         </div>
     )
 }

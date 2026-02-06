@@ -239,6 +239,95 @@ def analyze_asset(
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
+
+@app.post("/api/v1/chat")
+def chat_with_context(
+    request: dict,
+    x_llm_api_key: str | None = Header(default=None),
+    x_llm_base_url: str | None = Header(default=None),
+    x_llm_model: str | None = Header(default=None)
+):
+    """
+    Context-Aware Chat Endpoint
+    ---------------------------
+    Allows users to have conversations about specific assets.
+    The AI is provided with current market data as context.
+    
+    Args:
+        request (dict): Contains message, context (ticker data), and history
+        x_llm_api_key (str, optional): User's API key
+        x_llm_base_url (str, optional): Custom LLM base URL
+        x_llm_model (str, optional): Model to use
+        
+    Returns:
+        dict: AI response
+    """
+    # pyre-ignore[21]: openai installed but not found
+    from openai import OpenAI
+    
+    try:
+        message = request.get("message", "")
+        context = request.get("context", {})
+        history = request.get("history", [])
+        
+        # Build system prompt with context
+        ticker = context.get("ticker", "Unknown")
+        name = context.get("name", ticker)
+        price = context.get("price")
+        change = context.get("change")
+        change_percent = context.get("changePercent")
+        currency = context.get("currency", "USD")
+        data_source = context.get("dataSource", "Unknown")
+        
+        system_prompt = f"""You are a professional financial analyst assistant. You are helping the user analyze the following asset:
+
+**Asset Information**
+- Symbol: {ticker}
+- Name: {name}
+- Current Price: {currency} {price if price else 'N/A'}
+- Change: {change if change else 'N/A'}
+- Change Percent: {change_percent if change_percent else 'N/A'}%
+- Data Source: {data_source}
+
+Based on the above information and your financial knowledge, answer the user's questions.
+Guidelines:
+1. Respond in English
+2. Be professional yet easy to understand
+3. If giving investment advice, remind the user this is not financial advice
+4. Keep responses concise and use Markdown formatting"""
+
+        # Build messages array
+        messages = [{"role": "system", "content": system_prompt}]
+        
+        # Add conversation history
+        for h in history[-6:]:  # Last 6 messages
+            messages.append({"role": h.get("role", "user"), "content": h.get("content", "")})
+        
+        # Add current message
+        messages.append({"role": "user", "content": message})
+        
+        # Configure client
+        api_key = x_llm_api_key or "sk-no-key-required"
+        base_url = x_llm_base_url or "https://api.openai.com/v1"
+        model_name = x_llm_model or "gpt-3.5-turbo"
+        
+        client = OpenAI(api_key=api_key, base_url=base_url)
+        
+        completion = client.chat.completions.create(
+            model=model_name,
+            messages=messages,
+            max_tokens=1000,
+            temperature=0.7
+        )
+        
+        response_content = completion.choices[0].message.content
+        
+        return {"response": response_content}
+        
+    except Exception as e:
+        logger.error(f"Chat failed: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
+
 app.include_router(config.router)
 app.include_router(privacy.router)
 app.include_router(search.router)
