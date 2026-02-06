@@ -168,7 +168,7 @@ export function AnalysisDashboard({ ticker }: AnalysisDashboardProps) {
 
                                 <TabsContent value="consensus" className="p-6 bg-muted/20 rounded-md mt-2 min-h-[200px] prose dark:prose-invert max-w-none">
                                     {analysisLoading ? (
-                                        <div className="space-y-4">
+                                        <div key="loading" className="space-y-4">
                                             <Skeleton className="h-4 w-3/4" />
                                             <Skeleton className="h-4 w-full" />
                                             <Skeleton className="h-4 w-5/6" />
@@ -177,16 +177,22 @@ export function AnalysisDashboard({ ticker }: AnalysisDashboardProps) {
                                             </p>
                                         </div>
                                     ) : (
-                                        <ReactMarkdown>{analysis?.summary}</ReactMarkdown>
+                                        <div key="content">
+                                            <ReactMarkdown>{analysis?.summary}</ReactMarkdown>
+                                        </div>
                                     )}
                                 </TabsContent>
 
                                 <TabsContent value="bull" className="p-6 bg-green-500/10 rounded-md mt-2 min-h-[200px] prose dark:prose-invert max-w-none">
-                                    <ReactMarkdown>{analysis?.bullish_case || "No Data"}</ReactMarkdown>
+                                    <div key="bull-content">
+                                        <ReactMarkdown>{analysis?.bullish_case || "No Data"}</ReactMarkdown>
+                                    </div>
                                 </TabsContent>
 
                                 <TabsContent value="bear" className="p-6 bg-red-500/10 rounded-md mt-2 min-h-[200px] prose dark:prose-invert max-w-none">
-                                    <ReactMarkdown>{analysis?.bearish_case || "No Data"}</ReactMarkdown>
+                                    <div key="bear-content">
+                                        <ReactMarkdown>{analysis?.bearish_case || "No Data"}</ReactMarkdown>
+                                    </div>
                                 </TabsContent>
                             </Tabs>
                         </CardContent>
@@ -281,11 +287,15 @@ export function AnalysisDashboard({ ticker }: AnalysisDashboardProps) {
                         <CardContent>
                             <div className="text-sm prose dark:prose-invert">
                                 {analysisLoading ? (
-                                    <Skeleton className="h-20 w-full" />
+                                    <div key="advice-loading">
+                                        <Skeleton className="h-20 w-full" />
+                                    </div>
                                 ) : (
-                                    <ReactMarkdown>
-                                        {analysis?.sentiment_analysis || "Sentiment data unavailable."}
-                                    </ReactMarkdown>
+                                    <div key="advice-content">
+                                        <ReactMarkdown>
+                                            {analysis?.sentiment_analysis || "Sentiment data unavailable."}
+                                        </ReactMarkdown>
+                                    </div>
                                 )}
                             </div>
                         </CardContent>
