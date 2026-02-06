@@ -18,7 +18,7 @@ from fastapi.middleware.cors import CORSMiddleware
 # pyre-ignore[21]: app.services not found
 from app.services import market_data, consensus
 # pyre-ignore[21]: app.routers not found
-from app.routers import config, privacy
+from app.routers import config, privacy, search
 # pyre-ignore[21]: app.models not found
 from app.models.analysis import AnalysisRequest, AnalysisResponse
 
@@ -237,4 +237,5 @@ def analyze_asset(
 
 app.include_router(config.router)
 app.include_router(privacy.router)
+app.include_router(search.router)
 
