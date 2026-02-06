@@ -34,20 +34,25 @@ export function AssetInput() {
     // Debounce timer ref
     const debounceRef = useRef<NodeJS.Timeout | null>(null)
 
+    // Container ref for click outside detection
+    const containerRef = useRef<HTMLFormElement>(null)
+
     // Close dropdown when clicking outside
     useEffect(() => {
         const handleClickOutside = (e: MouseEvent) => {
-            if (showResults) {
+            if (containerRef.current && !containerRef.current.contains(e.target as Node)) {
                 setShowResults(false)
             }
         }
-        document.addEventListener('click', handleClickOutside)
-        return () => document.removeEventListener('click', handleClickOutside)
-    }, [showResults])
+        document.addEventListener('mousedown', handleClickOutside)
+        return () => document.removeEventListener('mousedown', handleClickOutside)
+    }, [])
 
     const handleSearchChange = (value: string) => {
         setQuery(value)
-        setShowResults(true)
+        if (value.length >= 2 || results.length > 0) {
+            setShowResults(true)
+        }
 
         if (debounceRef.current) {
             clearTimeout(debounceRef.current)
@@ -62,7 +67,7 @@ export function AssetInput() {
             setLoading(true)
             try {
                 // Get enabled search providers from store
-                const { ddgEnabled, yahooEnabled, akshareEnabled } = useSettingsStore.getState()
+                const { ddgEnabled, yahooEnabled, akshareEnabled, customEnabled } = useSettingsStore.getState()
 
                 // Build list of fetch promises based on enabled providers
                 const fetchPromises: Promise<Response>[] = [
@@ -84,6 +89,11 @@ export function AssetInput() {
                 if (akshareEnabled) {
                     fetchPromises.push(
                         fetch(getApiUrl(`/search/suggestions?query=${encodeURIComponent(value)}&provider=akshare`))
+                    )
+                }
+                if (customEnabled) {
+                    fetchPromises.push(
+                        fetch(getApiUrl(`/search/suggestions?query=${encodeURIComponent(value)}&provider=custom`))
                     )
                 }
 
@@ -112,6 +122,12 @@ export function AssetInput() {
                 if (akshareEnabled && responses[responseIndex]) {
                     const akshareData = responses[responseIndex].ok ? await responses[responseIndex].json() : { suggestions: [] }
                     allSuggestions = [...allSuggestions, ...(akshareData.suggestions || [])]
+                    responseIndex++
+                }
+
+                if (customEnabled && responses[responseIndex]) {
+                    const customData = responses[responseIndex].ok ? await responses[responseIndex].json() : { suggestions: [] }
+                    allSuggestions = [...allSuggestions, ...(customData.suggestions || [])]
                 }
 
                 // Combine: Asset search results first, then all provider suggestions
@@ -126,18 +142,13 @@ export function AssetInput() {
 
     const selectResult = (item: any) => {
         if (item.isDdg) {
-            // For DDG suggestions: fill search box and trigger search
-            // This allows users to see actual asset results instead of navigating to a non-existent ticker
             setQuery(item.ticker)
             handleSearchChange(item.ticker)
-            // Keep dropdown open to show search results
-        } else if (item.isYahoo || item.isAkshare) {
-            // For Yahoo Finance or AkShare suggestions: navigate directly (valid ticker)
+        } else if (item.isYahoo || item.isAkshare || item.isCustom) {
             setQuery(item.ticker)
             setShowResults(false)
             router.push(`/analysis?ticker=${encodeURIComponent(item.ticker)}`)
         } else {
-            // For asset search results: navigate directly to analysis page
             setQuery(item.ticker)
             setShowResults(false)
             router.push(`/analysis?ticker=${encodeURIComponent(item.ticker)}`)
@@ -157,13 +168,17 @@ export function AssetInput() {
             <CardContent className="p-0 relative">
                 {/* Search Tips */}
                 <div className="text-center mb-3 text-sm text-muted-foreground">
-                    <p className="mb-1">For best results, use <strong>Ticker</strong>, <strong>ISIN</strong>, or <strong>English name</strong></p>
+                    <p className="mb-1">Use <strong>Ticker</strong>, <strong>ISIN</strong>, <strong>Name</strong>, or <strong>中文名称</strong> for A-Shares</p>
                     <p className="text-xs opacity-75">
-                        Examples: <code className="bg-muted px-1 rounded">AAPL</code> · <code className="bg-muted px-1 rounded">0700.HK</code> · <code className="bg-muted px-1 rounded">HK0000181112</code> · <code className="bg-muted px-1 rounded">Tesla Inc</code>
+                        Examples: <code className="bg-muted px-1 rounded">AAPL</code> · <code className="bg-muted px-1 rounded">0700.HK</code> · <code className="bg-muted px-1 rounded">平安银行</code> · <code className="bg-muted px-1 rounded">Tesla Inc</code>
                     </p>
                 </div>
 
-                <form onSubmit={handleSearch} className="relative flex items-center w-full" onClick={e => e.stopPropagation()}>
+                <form
+                    ref={containerRef}
+                    onSubmit={handleSearch}
+                    className="relative flex items-center w-full"
+                >
                     <Search className="absolute left-4 h-5 w-5 text-muted-foreground" />
                     <Input
                         className="h-14 w-full rounded-full border-2 border-muted bg-background pl-12 pr-12 text-lg shadow-sm transition-all focus-visible:border-primary focus-visible:ring-0 focus-visible:ring-offset-0"
@@ -187,9 +202,9 @@ export function AssetInput() {
                         <div className="absolute top-full left-0 right-0 mt-2 bg-background border rounded-lg shadow-lg overflow-hidden py-1 max-h-80 overflow-y-auto z-50 animate-in fade-in zoom-in-95 duration-100">
                             {loading && <div className="p-3 text-center text-sm text-muted-foreground">Searching...</div>}
 
-                            {!loading && results.map((item) => (
+                            {!loading && results.map((item, index) => (
                                 <div
-                                    key={item.isin || item.ticker}
+                                    key={`${item.ticker}-${index}`}
                                     className="px-4 py-3 hover:bg-muted/50 cursor-pointer flex justify-between items-center transition-colors"
                                     onClick={(e) => {
                                         e.stopPropagation()
@@ -211,6 +226,11 @@ export function AssetInput() {
                                         ) : item.isAkshare ? (
                                             <>
                                                 <div className="text-xs font-mono bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-300 px-1.5 py-0.5 rounded">AkShare</div>
+                                                <div className="text-[10px] text-muted-foreground mt-0.5">{item.exchange}</div>
+                                            </>
+                                        ) : item.isCustom ? (
+                                            <>
+                                                <div className="text-xs font-mono bg-purple-100 dark:bg-purple-900/30 text-purple-700 dark:text-purple-300 px-1.5 py-0.5 rounded">{item.source || 'Custom'}</div>
                                                 <div className="text-[10px] text-muted-foreground mt-0.5">{item.exchange}</div>
                                             </>
                                         ) : (

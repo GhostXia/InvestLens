@@ -2,7 +2,7 @@
 import requests
 import logging
 import os
-from typing import Dict, Any, Optional
+from typing import Dict, Any, Optional, List
 # pyre-ignore[21]: relative import
 from .base import BaseDataProvider
 
@@ -87,4 +87,110 @@ class AlphaVantageProvider(BaseDataProvider):
     def get_market_context(self) -> Dict[str, str]:
         # Alpha Vantage requires separate calls for indices, often needs different function
         # For simplicity, we might skip implementation here or use minimal endpoints
-        return {} 
+        return {}
+
+    def search(self, query: str) -> List[Dict[str, Any]]:
+        """
+        Search for assets using SYMBOL_SEARCH endpoint.
+        """
+        if not self.api_key:
+            return []
+
+        try:
+            params = {
+                "function": "SYMBOL_SEARCH",
+                "keywords": query,
+                "apikey": self.api_key
+            }
+            response = requests.get(self.BASE_URL, params=params, timeout=10)
+            data = response.json()
+            
+            matches = data.get("bestMatches", [])
+            results = []
+            
+            for match in matches:
+                # AV returns keys like "1. symbol", "2. name", etc.
+                symbol = match.get("1. symbol")
+                name = match.get("2. name")
+                type_ = match.get("3. type")
+                region = match.get("4. region")
+                
+                if symbol:
+                    results.append({
+                        "ticker": symbol,
+                        "name": name or symbol,
+                        "exchange": region or "US",
+                        "asset_type": type_ or "Stock",
+                        "isCustom": True,  # Mark as custom/AV
+                        "source": "AlphaVantage"
+                    })
+            
+            return results
+        except Exception as e:
+            logger.error(f"Alpha Vantage search failed: {e}")
+            return []
+
+    def get_historical(self, ticker: str, period: str = "1y") -> Optional[List[Dict[str, Any]]]:
+        """
+        Fetch historical data using TIME_SERIES_DAILY_ADJUSTED.
+        """
+        if not self.api_key:
+            return None
+
+        try:
+            # Determine outputsize based on period
+            outputsize = "compact" # returns 100 data points (approx 5 months)
+            if period in ["6m", "1y", "2y", "max", "ytd"]:
+                 outputsize = "full" # returns 20+ years
+
+            params = {
+                "function": "TIME_SERIES_DAILY", # Using Daily (Adjusted requires premium sometimes, stick to basic Daily or Adjusted if avail)
+                # Actually TIME_SERIES_DAILY_ADJUSTED is standard. Let's try that. 
+                # Note: Free tier has limits. TIME_SERIES_DAILY might be safer API-wise but lacks split handling.
+                # Let's use TIME_SERIES_DAILY for stability on free tier unless we know otherwise.
+                "symbol": ticker,
+                "outputsize": outputsize,
+                "apikey": self.api_key
+            }
+            
+            response = requests.get(self.BASE_URL, params=params, timeout=10)
+            data = response.json()
+            
+            # Key is usually "Time Series (Daily)"
+            timeseries = data.get("Time Series (Daily)")
+            if not timeseries:
+                logger.warning(f"Alpha Vantage no historical data for {ticker}: {data.get('Note', 'Unknown error')}")
+                return None
+                
+            candles = []
+            # Calculate cutoff date
+            from datetime import datetime, timedelta
+            cutoff = datetime.now() - timedelta(days=365)
+            if period == "1m": cutoff = datetime.now() - timedelta(days=30)
+            elif period == "3m": cutoff = datetime.now() - timedelta(days=90)
+            elif period == "6m": cutoff = datetime.now() - timedelta(days=180)
+            elif period == "2y": cutoff = datetime.now() - timedelta(days=730)
+            
+            for date_str, values in timeseries.items():
+                dt = datetime.strptime(date_str, "%Y-%m-%d")
+                if dt < cutoff:
+                    continue
+                    
+                candles.append({
+                    "date": date_str,
+                    "open": float(values.get("1. open", 0)),
+                    "high": float(values.get("2. high", 0)),
+                    "low": float(values.get("3. low", 0)),
+                    "close": float(values.get("4. close", 0)),
+                    "volume": int(values.get("5. volume", 0))
+                })
+            
+            # AV returns newest first, we usually want oldest first for charts?
+            # Or depends on frontend. Highcharts usually handles it but sorting is safer.
+            candles.sort(key=lambda x: x["date"])
+            
+            return candles
+
+        except Exception as e:
+            logger.error(f"Alpha Vantage historical failed: {e}")
+            return None

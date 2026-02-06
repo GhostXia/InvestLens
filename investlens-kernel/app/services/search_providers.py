@@ -25,6 +25,46 @@ class SearchProvider(str, Enum):
     DUCKDUCKGO = "duckduckgo"
     YAHOO_FINANCE = "yahoo"
     AKSHARE = "akshare"
+    CUSTOM = "custom"
+
+
+async def get_suggestions_custom(query: str) -> List[Dict[str, Any]]:
+    """
+    Get search suggestions from user-configured custom providers.
+    Currently supports Alpha Vantage.
+    """
+    try:
+        logger.info(f"Custom/Configured suggestions for: '{query}'")
+        
+        # pyre-ignore[21]: app.services not found
+        from app.services.config_manager import config_manager
+        # pyre-ignore[21]: app.services not found
+        from app.services.providers.alpha_vantage import AlphaVantageProvider
+        
+        sources = config_manager.load_data_sources()
+        results = []
+        
+        for source in sources:
+            if not source.get("enabled", True):
+                continue
+                
+            if source["provider_type"] == "alpha_vantage":
+                api_key = source.get("api_key")
+                if api_key:
+                    provider = AlphaVantageProvider(api_key=api_key)
+                    # Run sync search in executor to avoid blocking
+                    loop = asyncio.get_event_loop()
+                    # Wrap the method call in a lambda or simple function for executor
+                    # Note: search is synchronous using requests
+                    suggestions = await loop.run_in_executor(None, provider.search, query)
+                    results.extend(suggestions)
+        
+        logger.info(f"Custom providers returned {len(results)} suggestions")
+        return results[:10] # Limit results
+        
+    except Exception as e:
+        logger.error(f"Custom suggestions failed: {str(e)}")
+        return []
 
 
 async def get_suggestions_duckduckgo(query: str) -> List[Dict[str, Any]]:
@@ -222,5 +262,7 @@ async def get_suggestions(query: str, provider: SearchProvider = SearchProvider.
         return await get_suggestions_yahoo(query)
     elif provider == SearchProvider.AKSHARE:
         return await get_suggestions_akshare(query)
+    elif provider == SearchProvider.CUSTOM:
+        return await get_suggestions_custom(query)
     else:
         return await get_suggestions_duckduckgo(query)

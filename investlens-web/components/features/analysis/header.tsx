@@ -87,12 +87,13 @@ export function TickerHeader({
                         <div className="flex items-center gap-2">
                             <h1 className="text-3xl font-bold tracking-tight">{symbol}</h1>
                             {dataSource && (
-                                <Badge variant="outline" className={`text-xs ${dataSource === "akshare"
-                                        ? "border-red-500/50 text-red-600 dark:text-red-400"
-                                        : "border-green-500/50 text-green-600 dark:text-green-400"
+                                <Badge variant="outline" className={`text-xs ${dataSource.includes("akshare")
+                                    ? "border-red-500/50 text-red-600 dark:text-red-400"
+                                    : "border-green-500/50 text-green-600 dark:text-green-400"
                                     }`}>
                                     <Database className="h-3 w-3 mr-1" />
-                                    {dataSource === "akshare" ? "AkShare" : "Yahoo Finance"}
+                                    {dataSource === "akshare" ? "AkShare" :
+                                        dataSource === "akshare_delayed" ? "AkShare (Delayed)" : "Yahoo Finance"}
                                 </Badge>
                             )}
                         </div>

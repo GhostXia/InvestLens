@@ -9,6 +9,7 @@ interface SettingsState {
     ddgEnabled: boolean
     yahooEnabled: boolean
     akshareEnabled: boolean
+    customEnabled: boolean
     setApiKey: (key: string) => void
     setBaseUrl: (url: string) => void
     setModel: (model: string) => void
@@ -16,6 +17,7 @@ interface SettingsState {
     setDdgEnabled: (enabled: boolean) => void
     setYahooEnabled: (enabled: boolean) => void
     setAkshareEnabled: (enabled: boolean) => void
+    setCustomEnabled: (enabled: boolean) => void
     clearAll: () => void
 }
 
@@ -39,6 +41,7 @@ export const useSettingsStore = create<SettingsState>()(
             ddgEnabled: false,
             yahooEnabled: true,
             akshareEnabled: true,
+            customEnabled: true,
             setApiKey: (key) => set({ apiKey: key }),
             setBaseUrl: (url) => set({ baseUrl: url }),
             setModel: (model) => set({ model: model }),
@@ -46,6 +49,7 @@ export const useSettingsStore = create<SettingsState>()(
             setDdgEnabled: (enabled) => set({ ddgEnabled: enabled }),
             setYahooEnabled: (enabled) => set({ yahooEnabled: enabled }),
             setAkshareEnabled: (enabled) => set({ akshareEnabled: enabled }),
+            setCustomEnabled: (enabled) => set({ customEnabled: enabled }),
             clearAll: () => set({
                 apiKey: "",
                 baseUrl: "https://api.openai.com/v1",
@@ -53,7 +57,8 @@ export const useSettingsStore = create<SettingsState>()(
                 quantModeEnabled: false,
                 ddgEnabled: false,
                 yahooEnabled: true,
-                akshareEnabled: true
+                akshareEnabled: true,
+                customEnabled: true
             }),
         }),
         {

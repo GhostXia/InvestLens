@@ -67,34 +67,70 @@ class AkShareProvider(BaseDataProvider):
             
             # Try A-share first
             if _is_ashare_ticker(ticker):
-                df = self._get_realtime_data()
-                if df is None or df.empty:
-                    return None
-                
-                # Find the stock by code
-                row = df[df['代码'] == ticker]
-                if row.empty:
-                    return None
-                
-                row = row.iloc[0]
-                
-                price = float(row['最新价']) if row['最新价'] else 0.0
-                change = float(row['涨跌额']) if row['涨跌额'] else 0.0
-                change_pct = float(row['涨跌幅']) if row['涨跌幅'] else 0.0
-                
-                return {
-                    "symbol": ticker,
-                    "price": round(price, 2),
-                    "change": round(change, 2),
-                    "change_percent": round(change_pct, 2),
-                    "name": row['名称'],
-                    "currency": "CNY",
-                    "volume": int(row['成交量']) if row['成交量'] else 0,
-                    "market_cap": float(row['总市值']) if row['总市值'] else 0,
-                    "pe_ratio": float(row['市盈率-动态']) if row['市盈率-动态'] else None,
-                    "turnover_rate": float(row['换手率']) if row['换手率'] else None,
-                    "data_source": "akshare"
-                }
+                try:
+                    df = self._get_realtime_data()
+                    if df is not None and not df.empty:
+                        # Find the stock by code
+                        row = df[df['代码'] == ticker]
+                        if not row.empty:
+                            row = row.iloc[0]
+                            
+                            price = float(row['最新价']) if row['最新价'] else 0.0
+                            change = float(row['涨跌额']) if row['涨跌额'] else 0.0
+                            change_pct = float(row['涨跌幅']) if row['涨跌幅'] else 0.0
+                            
+                            return {
+                                "symbol": ticker,
+                                "price": round(price, 2),
+                                "change": round(change, 2),
+                                "change_percent": round(change_pct, 2),
+                                "name": row['名称'],
+                                "currency": "CNY",
+                                "volume": int(row['成交量']) if row['成交量'] else 0,
+                                "market_cap": float(row['总市值']) if row['总市值'] else 0,
+                                "pe_ratio": float(row['市盈率-动态']) if row['市盈率-动态'] else None,
+                                "turnover_rate": float(row['换手率']) if row['换手率'] else None,
+                                "data_source": "akshare"
+                            }
+                except Exception as e:
+                    logger.warning(f"AkShare realtime fetch failed: {e}")
+
+                # ATTEMPT 2: Fallback to specific historical data
+                # If real-time fails, get latest daily data
+                try:
+                    # Fetch recent history (past 10 days to ensure we get data even after holidays)
+                    end_date = datetime.now()
+                    start_date = end_date - timedelta(days=10)
+                    
+                    hist_df = ak.stock_zh_a_hist(
+                        symbol=ticker,
+                        period="daily",
+                        start_date=start_date.strftime("%Y%m%d"),
+                        end_date=end_date.strftime("%Y%m%d"),
+                        adjust="qfq"
+                    )
+                    
+                    if hist_df is not None and not hist_df.empty:
+                        latest = hist_df.iloc[-1]
+                        
+                        price = float(latest['收盘'])
+                        prev_close = float(latest['开盘']) # Rough estimate if we don't have prev close
+                        # Better: calculate from pct change if available, or just use 0 change
+                        change_pct = float(latest['涨跌幅']) if '涨跌幅' in latest else 0.0
+                        change = float(latest['涨跌额']) if '涨跌额' in latest else 0.0
+                        
+                        return {
+                            "symbol": ticker,
+                            "price": round(price, 2),
+                            "change": round(change, 2),
+                            "change_percent": round(change_pct, 2),
+                            "name": ticker, # We might miss the name in fallback, that's acceptable
+                            "currency": "CNY",
+                            "volume": int(latest['成交量']),
+                            "data_source": "akshare_delayed"
+                        }
+                except Exception as e:
+                    logger.error(f"AkShare fallback failed: {e}")
             
             # Try fund
             if _is_fund_code(ticker):

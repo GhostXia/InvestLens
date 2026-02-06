@@ -111,6 +111,8 @@ async def get_suggestions(
             selected_provider = SearchProvider.YAHOO_FINANCE
         elif provider_lower == "akshare":
             selected_provider = SearchProvider.AKSHARE
+        elif provider_lower == "custom":
+            selected_provider = SearchProvider.CUSTOM
         else:
             selected_provider = SearchProvider.DUCKDUCKGO
         

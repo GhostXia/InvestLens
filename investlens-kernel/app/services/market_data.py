@@ -171,10 +171,38 @@ def get_historical_data(ticker: str, period: str = "6mo", interval: str = "1d") 
                 }
         except Exception as e:
             logger.warning(f"AkShare historical failed for {ticker}: {e}")
+
+    # Try Configured Providers (e.g., AlphaVantage)
+    # This enables custom data sources for historical charts
+    for provider in _providers:
+        # Skip standard YFinanceProvider here as we have specific fallback logic below
+        # or if it doesn't implement get_historical
+        if hasattr(provider, 'get_historical'):
+            try:
+                # pyre-ignore[16]: dynamic attribute
+                data = provider.get_historical(ticker, period=period)
+                if data:
+                    # Enrich with source info if not present
+                    if "data_source" not in data:
+                        data["data_source"] = "custom"
+                    return data
+            except Exception as e:
+                logger.warning(f"Provider {type(provider).__name__} history failed: {e}")
     
     # Fall back to YFinance
     try:
-        stock = yf.Ticker(ticker)
+        # Normalize ticker for YFinance if needed (especially for A-shares fallback)
+        yf_ticker = ticker
+        if len(ticker) == 6 and ticker.isdigit():
+            # Shanghai: 6xxxxx (A-Share/KC), 9xxxxx (B-Share), 5xxxxx (ETF/Fund)
+            if ticker.startswith(('5', '6', '9')):
+                yf_ticker = f"{ticker}.SS"
+            # Shenzhen: 0xxxxx (A-Share), 3xxxxx (ChiNext), 2xxxxx (B-Share), 1xxxxx (ETF/Fund)
+            elif ticker.startswith(('0', '1', '2', '3')):
+                yf_ticker = f"{ticker}.SZ"
+            # Beijing: 8xxxxx, 4xxxxx (Often .BJ but Yahoo support varies)
+        
+        stock = yf.Ticker(yf_ticker)
         hist = stock.history(period=period, interval=interval, auto_adjust=True)
         
         if hist.empty:
