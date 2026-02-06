@@ -5,10 +5,12 @@ import { TickerHeader } from "@/components/features/analysis/header"
 import { PriceChart } from "@/components/features/analysis/price-chart"
 import { ChatBubble } from "@/components/features/analysis/chat-bubble"
 import { CompanyProfile } from "@/components/features/analysis/company-profile"
+import { DebateViewer } from "@/components/features/analysis/DebateViewer"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Skeleton } from "@/components/ui/skeleton"
-import { Brain, LineChart, MessageSquare, AlertTriangle } from "lucide-react"
+import { Button } from "@/components/ui/button"
+import { Brain, LineChart, MessageSquare, AlertTriangle, Eye, EyeOff } from "lucide-react"
 import ReactMarkdown from 'react-markdown'
 import { useSettingsStore } from "@/lib/store/settings"
 import { getApiUrl } from "@/lib/api-config"
@@ -39,6 +41,7 @@ export function AnalysisDashboard({ ticker }: AnalysisDashboardProps) {
     const [analysisLoading, setAnalysisLoading] = useState(true)
     const [fundLoading, setFundLoading] = useState(true)
     const [error, setError] = useState<string | null>(null)
+    const [showDebate, setShowDebate] = useState(false)
 
     useEffect(() => {
         const fetchData = async () => {
@@ -158,9 +161,20 @@ export function AnalysisDashboard({ ticker }: AnalysisDashboardProps) {
                     {/* AI Consensus Engine Output Area */}
                     <Card>
                         <CardHeader>
-                            <CardTitle className="flex items-center gap-2">
-                                <Brain className="h-5 w-5 text-purple-500" />
-                                Multi-Model Consensus
+                            <CardTitle className="flex items-center justify-between">
+                                <span className="flex items-center gap-2">
+                                    <Brain className="h-5 w-5 text-purple-500" />
+                                    Multi-Model Consensus
+                                </span>
+                                <Button
+                                    variant={showDebate ? "default" : "outline"}
+                                    size="sm"
+                                    onClick={() => setShowDebate(!showDebate)}
+                                    className="flex items-center gap-2"
+                                >
+                                    {showDebate ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                                    {showDebate ? "Hide Debate" : "View Debate"}
+                                </Button>
                             </CardTitle>
                         </CardHeader>
                         <CardContent>
@@ -200,6 +214,26 @@ export function AnalysisDashboard({ ticker }: AnalysisDashboardProps) {
                                     </div>
                                 </TabsContent>
                             </Tabs>
+
+                            {/* Debate Viewer - Real-time LLM debate visualization */}
+                            {showDebate && (
+                                <DebateViewer
+                                    ticker={ticker}
+                                    headers={{
+                                        ...(apiKey && { "X-LLM-API-Key": apiKey }),
+                                        ...(baseUrl && { "X-LLM-Base-URL": baseUrl }),
+                                        ...(model && { "X-LLM-Model": model }),
+                                        ...(quantModeEnabled && { "X-Quant-Mode": "true" }),
+                                        ...(modelConfigs.filter(c => c.enabled).length > 0 && {
+                                            "X-Model-Configs": JSON.stringify(modelConfigs.filter(c => c.enabled))
+                                        })
+                                    }}
+                                    onComplete={(result) => {
+                                        // Update analysis with streamed result
+                                        setAnalysis(result)
+                                    }}
+                                />
+                            )}
                         </CardContent>
                     </Card>
                 </div>

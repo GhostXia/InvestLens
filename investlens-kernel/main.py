@@ -15,6 +15,8 @@ import logging
 from fastapi import FastAPI, HTTPException, Header
 # pyre-ignore[21]: fastapi installed but not found
 from fastapi.middleware.cors import CORSMiddleware
+# pyre-ignore[21]: fastapi installed but not found
+from fastapi.responses import StreamingResponse
 # pyre-ignore[21]: app.services not found
 from app.services import market_data, consensus
 # pyre-ignore[21]: app.routers not found
@@ -264,6 +266,61 @@ def analyze_asset(
         return response
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.post("/api/v1/analyze/stream")
+def analyze_asset_stream(
+    request: AnalysisRequest,
+    x_llm_api_key: str | None = Header(default=None),
+    x_llm_base_url: str | None = Header(default=None),
+    x_llm_model: str | None = Header(default=None),
+    x_quant_mode: str | None = Header(default=None, alias="X-Quant-Mode"),
+    x_model_configs: str | None = Header(default=None, alias="X-Model-Configs")
+):
+    """
+    Streaming Consensus Analysis Endpoint (SSE)
+    --------------------------------------------
+    Real-time visualization of the LLM debate process.
+    
+    Returns Server-Sent Events for each stage:
+    - context: Market data gathering
+    - bull: Bullish perspective analysis
+    - bear: Bearish perspective analysis
+    - judge: Final synthesis
+    - done: Complete with parsed result
+    """
+    import json
+    
+    logger.info(f"Received STREAMING analysis request for {request.ticker}")
+    
+    quant_mode_enabled = x_quant_mode == "true"
+    
+    # Parse multi-model configs if provided
+    model_configs = None
+    if x_model_configs:
+        try:
+            model_configs = json.loads(x_model_configs)
+            model_configs = [c for c in model_configs if c.get("enabled", True)]
+        except json.JSONDecodeError:
+            pass
+    
+    return StreamingResponse(
+        consensus.generate_consensus_analysis_stream(
+            ticker=request.ticker,
+            focus_areas=request.focus_areas,
+            api_key=x_llm_api_key,
+            base_url=x_llm_base_url,
+            model=x_llm_model,
+            quant_mode=quant_mode_enabled,
+            model_configs=model_configs
+        ),
+        media_type="text/event-stream",
+        headers={
+            "Cache-Control": "no-cache",
+            "Connection": "keep-alive",
+            "X-Accel-Buffering": "no"
+        }
+    )
 
 
 @app.post("/api/v1/chat")

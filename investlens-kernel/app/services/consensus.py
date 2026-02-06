@@ -255,3 +255,163 @@ def _parse_custom_format(text: str, quote: dict, ticker: str) -> AnalysisRespons
         sentiment_analysis=sentiment,
         confidence_score=score
     )
+
+
+def generate_consensus_analysis_stream(ticker: str, focus_areas: list[str], api_key: str | None = None, base_url: str | None = None, model: str | None = None, quant_mode: bool = False, model_configs: list | None = None):
+    """
+    Streaming version of consensus analysis that yields SSE events for each debate stage.
+    
+    Yields events in format:
+        data: {"stage": "bull|bear|judge", "status": "thinking|complete", "model": "...", "content": "..."}
+    """
+    import json
+    
+    def sse_event(data: dict) -> str:
+        """Format data as SSE event"""
+        return f"data: {json.dumps(data)}\n\n"
+    
+    # 1. Fetch context (same as non-streaming version)
+    yield sse_event({"stage": "context", "status": "fetching", "message": "Gathering market data..."})
+    
+    quote = market_data.get_quote(ticker)
+    financials = market_data.get_financials(ticker)
+    fin_context = "\n".join([f"- **{k}**: {v}" for k, v in financials.items()]) if financials else "No recent financial data available."
+    
+    macro = market_data.get_market_context()
+    macro_context = ", ".join([f"{k}: {v}" for k, v in macro.items()])
+    
+    search_query = f"{ticker} stock news analysis sentiment"
+    search_results = search_service.search_web(search_query, max_results=5)
+    news_context = "\n".join([
+        f"- [{r['title']}]({r['link']}): {r['snippet']}" 
+        for r in search_results
+    ]) if search_results else "No recent news found via search."
+    
+    yield sse_event({"stage": "context", "status": "complete", "message": "Market data gathered"})
+    
+    # Base Context for all agents
+    base_user_prompt = f"""
+    Analyze the following asset:
+    
+    **Asset**: {quote.get('symbol')} ({quote.get('name')})
+    **Current Price**: {quote.get('price')} {quote.get('currency')}
+    **Change**: {quote.get('change')} ({quote.get('change_percent')}%)
+    **Market Context**: {macro_context}
+    **Focus Areas**: {', '.join(focus_areas)}
+    **Time**: {datetime.now().isoformat()}
+
+    **Financial Snapshot**:
+    {fin_context}
+
+    **Recent News & Context**:
+    {news_context}
+    """
+    
+    # Determine which model(s) to query
+    bull_responses = []
+    bear_responses = []
+    
+    if model_configs and len(model_configs) > 0:
+        # Multi-model mode
+        for config in model_configs:
+            config_name = config.get("name", "Unknown")
+            config_key = config.get("apiKey", api_key)
+            config_url = config.get("baseUrl", base_url)
+            config_model = config.get("model", model)
+            
+            # Bull Stage
+            yield sse_event({"stage": "bull", "status": "thinking", "model": config_name})
+            bull_resp = llm_client.generate_analysis(
+                prompts.BULL_PERSONA,
+                base_user_prompt,
+                api_key_override=config_key,
+                base_url_override=config_url,
+                model_override=config_model
+            )
+            bull_responses.append(f"**{config_name}**:\n{bull_resp}")
+            yield sse_event({"stage": "bull", "status": "complete", "model": config_name, "content": bull_resp})
+            
+            # Bear Stage
+            yield sse_event({"stage": "bear", "status": "thinking", "model": config_name})
+            bear_resp = llm_client.generate_analysis(
+                prompts.BEAR_PERSONA,
+                base_user_prompt,
+                api_key_override=config_key,
+                base_url_override=config_url,
+                model_override=config_model
+            )
+            bear_responses.append(f"**{config_name}**:\n{bear_resp}")
+            yield sse_event({"stage": "bear", "status": "complete", "model": config_name, "content": bear_resp})
+        
+        bull_response = "\n\n---\n\n".join(bull_responses)
+        bear_response = "\n\n---\n\n".join(bear_responses)
+    else:
+        # Single-model mode
+        model_name = model or "Default"
+        
+        yield sse_event({"stage": "bull", "status": "thinking", "model": model_name})
+        bull_response = llm_client.generate_analysis(
+            prompts.BULL_PERSONA, 
+            base_user_prompt, 
+            api_key_override=api_key, 
+            base_url_override=base_url, 
+            model_override=model
+        )
+        yield sse_event({"stage": "bull", "status": "complete", "model": model_name, "content": bull_response})
+
+        yield sse_event({"stage": "bear", "status": "thinking", "model": model_name})
+        bear_response = llm_client.generate_analysis(
+            prompts.BEAR_PERSONA, 
+            base_user_prompt, 
+            api_key_override=api_key, 
+            base_url_override=base_url, 
+            model_override=model
+        )
+        yield sse_event({"stage": "bear", "status": "complete", "model": model_name, "content": bear_response})
+
+    # Judge Stage
+    yield sse_event({"stage": "judge", "status": "thinking", "model": "Judge"})
+    
+    sentiment_section = """4. **Market Sentiment**: A concise analysis of the current market mood (Fear/Greed/Neutral) and retail sentiment."""
+    if quant_mode:
+        sentiment_section = """4. **High Risk Trading Plan** (CRITICAL: You MUST use this exact format):
+   - **Action**: [BUY / HOLD / SELL]
+   - **Entry Strategy**: [Specific Price Zone]
+   - **Position Sizing**: [Specific Amount, e.g. "5% of portfolio" or "$2,000"] - DO NOT BE VAGUE.
+   - **Exit Targets**:
+     - **Target Price**: [Price] (Risk/Reward > 1:3)
+     - **Stop Loss**: [Price]
+   - **Reasoning**: [Brief justification]"""
+
+    judge_prompt = prompts.JUDGE_INSTRUCTION_TEMPLATE.format(
+        base_user_prompt=base_user_prompt,
+        bull_response=bull_response,
+        bear_response=bear_response,
+        sentiment_section=sentiment_section
+    )
+
+    raw_text = llm_client.generate_analysis(
+        prompts.JUDGE_PERSONA, 
+        judge_prompt, 
+        api_key_override=api_key, 
+        base_url_override=base_url, 
+        model_override=model
+    )
+    
+    yield sse_event({"stage": "judge", "status": "complete", "model": "Judge", "content": raw_text})
+    
+    # Final parsed result
+    parsed = _parse_custom_format(raw_text, quote, ticker)
+    yield sse_event({
+        "stage": "done", 
+        "status": "complete",
+        "result": {
+            "ticker": parsed.ticker,
+            "summary": parsed.summary,
+            "bullish_case": parsed.bullish_case,
+            "bearish_case": parsed.bearish_case,
+            "sentiment_analysis": parsed.sentiment_analysis,
+            "confidence_score": parsed.confidence_score
+        }
+    })
+
