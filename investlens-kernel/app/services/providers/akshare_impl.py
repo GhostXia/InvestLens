@@ -178,28 +178,40 @@ class AkShareProvider(BaseDataProvider):
                 except Exception as e:
                     logger.error(f"AkShare fallback failed: {e}")
             
-            # Try fund
+            # Try fund (if stock fetch returned nothing or skipped)
             if _is_fund_code(ticker):
                 try:
+                    # Use 'fund_individual_basic_info_xq' for basic info, 
+                    # but 'fund_open_fund_daily_em' might be better for latest NAV?
+                    # Let's stick to XQ for info but maybe try 'fund_etf_spot_em' if it's an ETF?
+                    # For 008163 (Open Fund), basic_info_xq works but maybe NAV parsing was wrong.
+                    
                     fund_info = ak.fund_individual_basic_info_xq(symbol=ticker)
                     if fund_info is not None and not fund_info.empty:
-                        # Parse fund info
+                         # Parse fund info robustly
                         info_dict = {}
                         for _, row in fund_info.iterrows():
-                            key = row.iloc[0] if len(row) > 0 else ''
-                            val = row.iloc[1] if len(row) > 1 else ''
+                             # Ensure we handle various shapes
+                            key = str(row.iloc[0]) if len(row) > 0 else ''
+                            val = str(row.iloc[1]) if len(row) > 1 else ''
                             info_dict[key] = val
                         
-                        # Get NAV
+                        # Get NAV - try multiple keys
                         nav_str = info_dict.get('单位净值', '0')
-                        nav = float(nav_str) if nav_str and nav_str != '--' else 0.0
+                        # Sometimes it might be '最新净值'
                         
+                        nav = 0.0
+                        try:
+                            nav = float(nav_str)
+                        except:
+                            pass
+                            
                         return {
                             "symbol": ticker,
                             "price": round(nav, 4),
-                            "change": 0.0,
+                            "change": 0.0, # detailed daily change hard to get from basic info
                             "change_percent": 0.0,
-                            "name": info_dict.get('基金名称', ticker),
+                            "name": info_dict.get('基金名称', info_dict.get('名称', ticker)),
                             "currency": "CNY",
                             "fund_type": info_dict.get('基金类型', 'Fund'),
                             "data_source": "akshare"
@@ -231,14 +243,7 @@ class AkShareProvider(BaseDataProvider):
 
     def get_historical(self, ticker: str, period: str = "1y") -> Optional[List[Dict[str, Any]]]:
         """
-        Fetch historical OHLCV data for A-share.
-        
-        Args:
-            ticker: Stock code (e.g., "000001")
-            period: Time period ("1m", "3m", "6m", "1y", "2y")
-            
-        Returns:
-            List of OHLCV dictionaries with standardized field names
+        Fetch historical OHLCV data for A-share OR Fund.
         """
         try:
             import akshare as ak
@@ -254,37 +259,78 @@ class AkShareProvider(BaseDataProvider):
             }
             days = period_map.get(period, 365)
             start_date = end_date - timedelta(days=days)
+            start_str = start_date.strftime("%Y%m%d")
+            end_str = end_date.strftime("%Y%m%d")
             
-            # Fetch historical data
-            df = ak.stock_zh_a_hist(
-                symbol=ticker,
-                period="daily",
-                start_date=start_date.strftime("%Y%m%d"),
-                end_date=end_date.strftime("%Y%m%d"),
-                adjust="qfq"  # Forward adjusted
-            )
+            # 1. Try A-Share History
+            if _is_ashare_ticker(ticker):
+                try:
+                    df = ak.stock_zh_a_hist(symbol=ticker, period="daily", start_date=start_str, end_date=end_str, adjust="qfq")
+                    if df is not None and not df.empty:
+                        return self._parse_stock_history(df)
+                except:
+                    pass # Fall through to try fund
             
-            if df is None or df.empty:
-                return None
+            # 2. Try Fund History (Open Fund)
+            if _is_fund_code(ticker):
+                 try:
+                    # fund_etf_hist_em for ETFs, fund_open_fund_info_em logic for others?
+                    # Actually 'fund_open_fund_info_em' returns historical data! 
+                    # Or 'fund_money_fund_daily_em' for money markets?
+                    # Safest general one: fund_open_fund_info_em returns net value history?
+                    # No, try 'fund_etf_fund_daily_em' or 'fund_open_fund_info_em'
+                    
+                    # For Open Funds (008163), 'fund_open_fund_info_em' is deprecated or specific.
+                    # Use 'fund_open_fund_net_value_daily' equivalent?
+                    # 'fund_nav_history_em'? Let's check akshare docs via intuition or available methods.
+                    # 'fund_open_fund_info_em' returns net value history in recent akshare versions.
+                    
+                    df = ak.fund_open_fund_info_em(symbol=ticker, indicator="单位净值走势")
+                    # Columns usually: 净值日期, 单位净值, 日增长率, ...
+                    
+                    if df is not None and not df.empty:
+                        result = []
+                        for _, row in df.iterrows():
+                             # Filter by date range
+                            date_str = str(row['净值日期'])
+                            d = datetime.strptime(date_str, "%Y-%m-%d")
+                            if d < start_date: 
+                                continue
+                                
+                            val = float(row['单位净值'])
+                            # Funds don't strictly have Open/High/Low, just Close (NAV)
+                            result.append({
+                                "date": date_str,
+                                "open": val,
+                                "high": val,
+                                "low": val,
+                                "close": val,
+                                "volume": 0, # Volume often unavailable for open funds
+                                "change_percent": float(row['日增长率']) if '日增长率' in row and row['日增长率'] else 0.0
+                            })
+                        return result
+                 except Exception as e:
+                     logger.warning(f"Fund history failed: {e}")
             
-            # Standardize field names
-            result = []
-            for _, row in df.iterrows():
-                result.append({
-                    "date": str(row['日期']),
-                    "open": float(row['开盘']),
-                    "high": float(row['最高']),
-                    "low": float(row['最低']),
-                    "close": float(row['收盘']),
-                    "volume": int(row['成交量']),
-                    "change_percent": float(row['涨跌幅']) if '涨跌幅' in row else 0.0
-                })
-            
-            return result
+            return None
             
         except Exception as e:
             logger.error(f"AkShare historical failed: {str(e)}")
             return None
+
+    def _parse_stock_history(self, df: Any) -> List[Dict[str, Any]]:
+        result = []
+        for _, row in df.iterrows():
+            result.append({
+                "date": str(row['日期']),
+                "open": float(row['开盘']),
+                "high": float(row['最高']),
+                "low": float(row['最低']),
+                "close": float(row['收盘']),
+                "volume": int(row['成交量']),
+                "change_percent": float(row['涨跌幅']) if '涨跌幅' in row else 0.0
+            })
+        return result
 
     def get_financials(self, ticker: str) -> Dict[str, str]:
         """
