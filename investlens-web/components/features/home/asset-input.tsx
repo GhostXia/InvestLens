@@ -144,11 +144,19 @@ export function AssetInput() {
     return (
         <Card className="w-full max-w-2xl border-none shadow-none bg-transparent relative z-50">
             <CardContent className="p-0 relative">
+                {/* Search Tips */}
+                <div className="text-center mb-3 text-sm text-muted-foreground">
+                    <p className="mb-1">For best results, use <strong>Ticker</strong>, <strong>ISIN</strong>, or <strong>English name</strong></p>
+                    <p className="text-xs opacity-75">
+                        Examples: <code className="bg-muted px-1 rounded">AAPL</code> · <code className="bg-muted px-1 rounded">0700.HK</code> · <code className="bg-muted px-1 rounded">HK0000181112</code> · <code className="bg-muted px-1 rounded">Tesla Inc</code>
+                    </p>
+                </div>
+
                 <form onSubmit={handleSearch} className="relative flex items-center w-full" onClick={e => e.stopPropagation()}>
                     <Search className="absolute left-4 h-5 w-5 text-muted-foreground" />
                     <Input
                         className="h-14 w-full rounded-full border-2 border-muted bg-background pl-12 pr-12 text-lg shadow-sm transition-all focus-visible:border-primary focus-visible:ring-0 focus-visible:ring-offset-0"
-                        placeholder="Enter Ticker (e.g., AAPL) or Asset Name..."
+                        placeholder="Ticker, ISIN, or Name (e.g., AAPL, HK0000181112, Apple Inc.)"
                         value={query}
                         onChange={(e) => handleSearchChange(e.target.value)}
                         onFocus={() => { if (results.length > 0) setShowResults(true) }}

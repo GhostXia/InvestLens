@@ -34,7 +34,7 @@ export const useSettingsStore = create<SettingsState>()(
             baseUrl: "https://api.openai.com/v1",
             model: "gpt-4",
             quantModeEnabled: false,
-            ddgEnabled: true,
+            ddgEnabled: false,
             yahooEnabled: true,
             setApiKey: (key) => set({ apiKey: key }),
             setBaseUrl: (url) => set({ baseUrl: url }),
@@ -47,7 +47,7 @@ export const useSettingsStore = create<SettingsState>()(
                 baseUrl: "https://api.openai.com/v1",
                 model: "gpt-4",
                 quantModeEnabled: false,
-                ddgEnabled: true,
+                ddgEnabled: false,
                 yahooEnabled: true
             }),
         }),
