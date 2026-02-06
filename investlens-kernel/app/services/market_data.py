@@ -46,6 +46,20 @@ def _is_china_ticker(ticker: str) -> bool:
         return ticker[0] in ('0', '3', '6')
     return False
 
+def _normalize_ticker_for_yfinance(ticker: str) -> str:
+    """
+    Ensure Chinese tickers have correct suffix for YFinance.
+    e.g. 603986 -> 603986.SS
+    """
+    if len(ticker) == 6 and ticker.isdigit():
+        # Shanghai: 6xxxxx (A-Share/KC), 9xxxxx (B-Share), 5xxxxx (ETF/Fund)
+        if ticker.startswith(('5', '6', '9')):
+            return f"{ticker}.SS"
+        # Shenzhen: 0xxxxx (A-Share), 3xxxxx (ChiNext), 2xxxxx (B-Share), 1xxxxx (ETF/Fund)
+        elif ticker.startswith(('0', '1', '2', '3')):
+            return f"{ticker}.SZ"
+    return ticker
+
 
 def reload_providers():
     """
@@ -269,7 +283,9 @@ def get_prediction(ticker: str, days: int = 7) -> dict:
     """
     try:
         # 1. Get recent history (past 30 days) for volatility
-        stock = yf.Ticker(ticker)
+        # Normalize for YFinance (prediction engine uses YF history)
+        yf_ticker = _normalize_ticker_for_yfinance(ticker)
+        stock = yf.Ticker(yf_ticker)
         hist = stock.history(period="1mo", interval="1d")
         
         if hist.empty:

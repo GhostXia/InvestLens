@@ -81,11 +81,14 @@ def generate_consensus_analysis(ticker: str, focus_areas: list[str], api_key: st
     sentiment_section = """4. **Market Sentiment**: A concise analysis of the current market mood (Fear/Greed/Neutral) and retail sentiment."""
     
     if quant_mode:
-        sentiment_section = """4. **Trading Recommendation**: Provide an explicit trading recommendation:
-   - **Action**: BUY / HOLD / SELL (choose one)
-   - **Target Price**: Your price target for the next 3-6 months
-   - **Stop Loss**: Recommended stop-loss level
-   - **Reasoning**: 2-3 sentence justification for the recommendation"""
+        sentiment_section = """4. **High Risk Trading Plan**:
+   - **Action**: BUY / HOLD / SELL (Specific call)
+   - **Entry Strategy**: Recommended entry price zone.
+   - **Position Sizing**: **CRITICAL** - Specify detailed allocation (e.g., "Allocate 5% of portfolio" or "Buy $10,000 worth"). Provide a concrete suggested amount.
+   - **Exit Targets**:
+     - **Target Price**: Specific price target (3-6 months).
+     - **Stop Loss**: Specific stop-loss price.
+   - **Reasoning**: Justify with risk/reward ratio."""
     
     # Inject dynamic context into the user prompt
     user_prompt = f"""

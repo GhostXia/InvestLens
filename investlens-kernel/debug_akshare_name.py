@@ -17,9 +17,20 @@ def test_name_fetch(ticker="603986"):
         # Try real-time spot for single (optimization? no, spot is usually all)
         # But let's see if we can get it from stock_info_a_code_name
         code_name_map = ak.stock_info_a_code_name()
-        row = code_name_map[code_name_map['code'] == ticker]
-        print("\nstock_info_a_code_name result:")
-        print(row)
+        print(f"Columns: {code_name_map.columns}")
+        if not code_name_map.empty:
+            print(f"First row: {code_name_map.iloc[0]}")
+        
+        # Check if 'code' or 'name' columns exist
+        if 'code' not in code_name_map.columns:
+            print("WARNING: 'code' column missing!")
+        if 'name' not in code_name_map.columns:
+            print("WARNING: 'name' column missing!")
+
+        # Try to find our ticker
+        # Handle potential string/int types
+        # Tries to match ticker in whatever column looks like code
+        pass
     except Exception as e:
         print(f"stock_info_a_code_name failed: {e}")
 

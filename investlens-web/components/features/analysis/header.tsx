@@ -70,8 +70,8 @@ export function TickerHeader({
 
     // Prioritize name for display
     const displayName = name || symbol
-    // For Chinese stocks, user prefers just the code (e.g. 603986) without suffix as subtitle
-    const displaySymbol = name ? (isChineseStock ? symbol.split('.')[0] : symbol) : ""
+    // User requested full ticker (e.g. 603986.SS) as subtitle
+    const displaySymbol = name ? symbol : ""
     const isPositive = change >= 0
 
     // Format large numbers

@@ -70,15 +70,21 @@ class AkShareProvider(BaseDataProvider):
         
         try:
             # Fetch all codes and names
+            print("DEBUG: Fetching ak.stock_info_a_code_name()...")
             df = ak.stock_info_a_code_name()
             if df is not None and not df.empty:
+                print(f"DEBUG: Fetched {len(df)} rows. Columns: {df.columns.tolist()}")
                 # Convert to dictionary for fast lookup {code: name}
+                # Ensure code is string
+                df['code'] = df['code'].astype(str)
                 code_name_map = dict(zip(df['code'], df['name']))
                 self._code_name_map = code_name_map
                 self._code_name_cache_time = now
+                print(f"DEBUG: Map created with {len(code_name_map)} entries. Sample: {list(code_name_map.items())[:5]}")
                 return code_name_map
             return None
         except Exception as e:
+            print(f"DEBUGGING ERROR: Failed to fetch code-name map: {e}")
             logger.warning(f"Failed to fetch code-name map: {e}")
             return None
 
@@ -150,8 +156,14 @@ class AkShareProvider(BaseDataProvider):
                         # Try to get the real name from our detailed map
                         stock_name = ticker
                         name_map = self._get_code_name_map()
-                        if name_map and ticker in name_map:
-                             stock_name = name_map[ticker]
+                        if name_map:
+                             if ticker in name_map:
+                                 stock_name = name_map[ticker]
+                                 print(f"DEBUG: Found name for {ticker}: {stock_name}")
+                             else:
+                                 print(f"DEBUG: Ticker {ticker} NOT FOUND in name_map keys (Sample keys: {list(name_map.keys())[:5]})")
+                        else:
+                             print("DEBUG: name_map is None")
 
                         return {
                             "symbol": ticker,
