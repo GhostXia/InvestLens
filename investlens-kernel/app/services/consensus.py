@@ -214,7 +214,7 @@ def _parse_custom_format(text: str, quote: dict, ticker: str) -> AnalysisRespons
     summary = ""
     bull = ""
     bear = ""
-    sentiment = "Market sentiment is neutral/mixed."
+    sentiment = ""  # Changed from default to empty, filled later
     score = 50
     
     # Simple state machine or split
@@ -224,23 +224,33 @@ def _parse_custom_format(text: str, quote: dict, ticker: str) -> AnalysisRespons
     for i, part in enumerate(parts):
         token = part.strip()
         if token.startswith("SUMMARY"):
-            summary = parts[i+1].strip()
+            if i + 1 < len(parts):
+                summary = parts[i+1].strip()
         elif token.startswith("BULL"):
-            bull = parts[i+1].strip()
+            if i + 1 < len(parts):
+                bull = parts[i+1].strip()
         elif token.startswith("BEAR"):
-            bear = parts[i+1].strip()
-        elif token.startswith("SENTIMENT"):
-            sentiment = parts[i+1].strip()
+            if i + 1 < len(parts):
+                bear = parts[i+1].strip()
+        elif token.startswith("SENTIMENT") or token.startswith("TRADING") or "Trading Plan" in token or "PLAN" in token:
+            # Handle both "SENTIMENT" and "High Risk Trading Plan" / "TRADING PLAN"
+            if i + 1 < len(parts):
+                sentiment = parts[i+1].strip()
         elif token.startswith("SCORE"):
             try:
-                score_str = parts[i+1].strip()
-                # Extract first integer found (handle "85 (High)" cases)
-                import re
-                match = re.search(r'\d+', score_str)
-                if match:
-                    score = int(match.group())
+                if i + 1 < len(parts):
+                    score_str = parts[i+1].strip()
+                    # Extract first integer found (handle "85 (High)" cases)
+                    import re
+                    match = re.search(r'\d+', score_str)
+                    if match:
+                        score = int(match.group())
             except:
                 score = 50
+
+    # Default sentiment if not found
+    if not sentiment:
+        sentiment = "Market sentiment is neutral/mixed."
 
     # Fallback if parsing failed completely (LLM ignored instructions)
     if not summary:

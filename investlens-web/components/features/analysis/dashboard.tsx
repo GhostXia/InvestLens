@@ -10,7 +10,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Skeleton } from "@/components/ui/skeleton"
 import { Button } from "@/components/ui/button"
-import { Brain, LineChart, MessageSquare, AlertTriangle, Eye, EyeOff } from "lucide-react"
+import { Brain, LineChart, MessageSquare, AlertTriangle, Eye, EyeOff, RefreshCw } from "lucide-react"
 import ReactMarkdown from 'react-markdown'
 import { useSettingsStore } from "@/lib/store/settings"
 import { getApiUrl } from "@/lib/api-config"
@@ -43,6 +43,47 @@ export function AnalysisDashboard({ ticker }: AnalysisDashboardProps) {
     const [error, setError] = useState<string | null>(null)
     const [showDebate, setShowDebate] = useState(false)
 
+    // Build headers for LLM requests
+    const getAnalysisHeaders = () => {
+        const enabledConfigs = modelConfigs.filter(c => c.enabled)
+        return {
+            "Content-Type": "application/json",
+            ...(apiKey && { "X-LLM-API-Key": apiKey }),
+            ...(baseUrl && { "X-LLM-Base-URL": baseUrl }),
+            ...(model && { "X-LLM-Model": model }),
+            ...(quantModeEnabled && { "X-Quant-Mode": "true" }),
+            ...(enabledConfigs.length > 0 && { "X-Model-Configs": JSON.stringify(enabledConfigs) })
+        }
+    }
+
+    // Fetch analysis - can be called manually for regeneration
+    const fetchAnalysis = async () => {
+        setAnalysisLoading(true)
+        try {
+            const headers = getAnalysisHeaders()
+            console.log("Fetching analysis with headers:", { hasApiKey: !!apiKey, quantMode: quantModeEnabled })
+
+            const analysisRes = await fetch(getApiUrl("/api/v1/analyze"), {
+                method: "POST",
+                headers: headers,
+                body: JSON.stringify({
+                    ticker: ticker,
+                    focus_areas: ["Technical", "Fundamental", "Market Sentiment"]
+                })
+            })
+
+            if (analysisRes.ok) {
+                const analysisData = await analysisRes.json()
+                setAnalysis(analysisData)
+            }
+        } catch (err: any) {
+            console.error("Analysis fetch failed:", err)
+        } finally {
+            setAnalysisLoading(false)
+        }
+    }
+
+    // Initial data fetch on mount
     useEffect(() => {
         const fetchData = async () => {
             setLoading(true)
@@ -58,43 +99,11 @@ export function AnalysisDashboard({ ticker }: AnalysisDashboardProps) {
                 setMarketData(quote)
                 setLoading(false) // Header can show now
 
-                // 2. Fetch Consensus Analysis
-                // Filter to only enabled model configs
-                const enabledConfigs = modelConfigs.filter(c => c.enabled)
+                // 2. Fetch Consensus Analysis (first time auto-fetch)
+                await fetchAnalysis()
 
-                const headers: Record<string, string> = {
-                    "Content-Type": "application/json",
-                    ...(apiKey && { "X-LLM-API-Key": apiKey }),
-                    ...(baseUrl && { "X-LLM-Base-URL": baseUrl }),
-                    ...(model && { "X-LLM-Model": model }),
-                    ...(quantModeEnabled && { "X-Quant-Mode": "true" }),
-                    // Send multi-model configs if any are enabled
-                    ...(enabledConfigs.length > 0 && { "X-Model-Configs": JSON.stringify(enabledConfigs) })
-                }
-
-                console.log("Sending API request with headers:", { hasApiKey: !!apiKey, hasBaseUrl: !!baseUrl, hasModel: !!model, baseUrl, model, quantMode: quantModeEnabled, multiModelCount: enabledConfigs.length })
-
-                // Start analysis and fundamentals fetched in parallel or sequence
-
-                const analysisPromise = fetch(getApiUrl("/api/v1/analyze"), {
-                    method: "POST",
-                    headers: headers,
-                    body: JSON.stringify({
-                        ticker: ticker,
-                        focus_areas: ["Technical", "Fundamental", "Market Sentiment"]
-                    })
-                })
-
-                const fundPromise = fetch(getApiUrl(`/api/v1/fundamentals/${ticker}`))
-
-                // Await them
-                const [analysisRes, fundRes] = await Promise.all([analysisPromise, fundPromise])
-
-                if (analysisRes.ok) {
-                    const analysisData = await analysisRes.json()
-                    setAnalysis(analysisData)
-                }
-
+                // 3. Fetch Fundamentals
+                const fundRes = await fetch(getApiUrl(`/api/v1/fundamentals/${ticker}`))
                 if (fundRes.ok) {
                     const fundData = await fundRes.json()
                     setFundamentals(fundData)
@@ -166,15 +175,27 @@ export function AnalysisDashboard({ ticker }: AnalysisDashboardProps) {
                                     <Brain className="h-5 w-5 text-purple-500" />
                                     Multi-Model Consensus
                                 </span>
-                                <Button
-                                    variant={showDebate ? "default" : "outline"}
-                                    size="sm"
-                                    onClick={() => setShowDebate(!showDebate)}
-                                    className="flex items-center gap-2"
-                                >
-                                    {showDebate ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-                                    {showDebate ? "Hide Debate" : "View Debate"}
-                                </Button>
+                                <div className="flex items-center gap-2">
+                                    <Button
+                                        variant="outline"
+                                        size="sm"
+                                        onClick={fetchAnalysis}
+                                        disabled={analysisLoading}
+                                        className="flex items-center gap-2"
+                                    >
+                                        <RefreshCw className={`h-4 w-4 ${analysisLoading ? 'animate-spin' : ''}`} />
+                                        {analysisLoading ? "Analyzing..." : "Regenerate"}
+                                    </Button>
+                                    <Button
+                                        variant={showDebate ? "default" : "outline"}
+                                        size="sm"
+                                        onClick={() => setShowDebate(!showDebate)}
+                                        className="flex items-center gap-2"
+                                    >
+                                        {showDebate ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                                        {showDebate ? "Hide Debate" : "View Debate"}
+                                    </Button>
+                                </div>
                             </CardTitle>
                         </CardHeader>
                         <CardContent>
