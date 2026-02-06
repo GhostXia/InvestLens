@@ -70,8 +70,21 @@ export function TickerHeader({
 
     // Prioritize name for display
     const displayName = name || symbol
+
     // User requested full ticker (e.g. 603986.SS) as subtitle
-    const displaySymbol = name ? symbol : ""
+    // We format raw 6-digit codes to include the exchange suffix for clarity
+    const formatTicker = (s: string) => {
+        if (/^\d{6}$/.test(s)) {
+            // Shanghai (Main A, B, KC, ETF): Starts with 6, 9, 5
+            if (s.startsWith("6") || s.startsWith("9") || s.startsWith("5")) return s + ".SS"
+            // Shenzhen (Main A, B, ChiNext, ETF): Starts with 0, 2, 3, 1
+            if (s.startsWith("0") || s.startsWith("2") || s.startsWith("3") || s.startsWith("1")) return s + ".SZ"
+            // Beijing (BSE): Starts with 4, 8
+            if (s.startsWith("4") || s.startsWith("8")) return s + ".BJ"
+        }
+        return s
+    }
+    const displaySymbol = name ? formatTicker(symbol) : ""
     const isPositive = change >= 0
 
     // Format large numbers
