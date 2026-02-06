@@ -24,7 +24,7 @@ from .llm_provider import llm_client
 # pyre-ignore[21]: Imports exist
 from ..models.analysis import AnalysisResponse
 
-def generate_consensus_analysis(ticker: str, focus_areas: list[str], api_key: str | None = None, base_url: str | None = None, model: str | None = None) -> AnalysisResponse:
+def generate_consensus_analysis(ticker: str, focus_areas: list[str], api_key: str | None = None, base_url: str | None = None, model: str | None = None, quant_mode: bool = False) -> AnalysisResponse:
     """
     Performs a comprehensive analysis of the given ticker by orchestrating data fetch and AI inference.
     
@@ -40,6 +40,7 @@ def generate_consensus_analysis(ticker: str, focus_areas: list[str], api_key: st
         api_key (str | None): User-provided API key for this request session.
         base_url (str | None): User-provided Base URL for the LLM provider.
         model (str | None): User-provided model identifier.
+        quant_mode (bool): If True, provides explicit buy/sell recommendations.
         
     Returns:
         AnalysisResponse: A structured object containing the synthesized report and confidence metrics.
@@ -76,6 +77,16 @@ def generate_consensus_analysis(ticker: str, focus_areas: list[str], api_key: st
         for r in search_results
     ]) if search_results else "No recent news found via search."
     
+    # Enhanced prompt for Quant Mode
+    sentiment_section = """4. **Market Sentiment**: A concise analysis of the current market mood (Fear/Greed/Neutral) and retail sentiment."""
+    
+    if quant_mode:
+        sentiment_section = """4. **Trading Recommendation**: Provide an explicit trading recommendation:
+   - **Action**: BUY / HOLD / SELL (choose one)
+   - **Target Price**: Your price target for the next 3-6 months
+   - **Stop Loss**: Recommended stop-loss level
+   - **Reasoning**: 2-3 sentence justification for the recommendation"""
+    
     # Inject dynamic context into the user prompt
     user_prompt = f"""
     Analyze the following asset:
@@ -98,7 +109,7 @@ def generate_consensus_analysis(ticker: str, focus_areas: list[str], api_key: st
     1. **Executive Summary**: A brief 3-sentence overview of the current setup.
     2. **Bullish Thesis**: 3 key bullet points for the long case.
     3. **Bearish Thesis**: 3 key bullet points for the short/risk case.
-    4. **Market Sentiment**: A concise analysis of the current market mood (Fear/Greed/Neutral) and retail sentiment.
+    {sentiment_section}
     5. **Confidence Score**: An integer from 0-100 indicating conviction in the analysis availability.
 
     Response format:

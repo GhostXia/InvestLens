@@ -7,7 +7,8 @@ from pydantic import BaseModel
 
 logger = logging.getLogger(__name__)
 
-CONFIG_DIR = "config"
+# Use absolute path to config directory
+CONFIG_DIR = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))), "config")
 SOURCES_FILE = "sources.json"
 
 class DataSourceConfig(BaseModel):

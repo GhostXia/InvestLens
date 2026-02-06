@@ -59,12 +59,26 @@ export function AssetInput() {
         debounceRef.current = setTimeout(async () => {
             setLoading(true)
             try {
-                // Use centralized URL builder
-                const res = await fetch(getApiUrl(`/api/v1/search?q=${encodeURIComponent(value)}`))
-                if (res.ok) {
-                    const data = await res.json()
-                    setResults(data.results || [])
-                }
+                // Fetch both asset search and DuckDuckGo suggestions in parallel
+                const [assetRes, ddgRes] = await Promise.all([
+                    fetch(getApiUrl(`/api/v1/search?q=${encodeURIComponent(value)}`)),
+                    fetch(getApiUrl(`/search/suggestions?query=${encodeURIComponent(value)}`))
+                ])
+
+                const assetData = assetRes.ok ? await assetRes.json() : { results: [] }
+                const ddgData = ddgRes.ok ? await ddgRes.json() : { suggestions: [] }
+
+                // Combine: Asset search results first, then DuckDuckGo suggestions
+                const assetResults = assetData.results || []
+                const ddgSuggestions = (ddgData.suggestions || [])
+                    .filter((s: string) => !assetResults.some((r: any) => r.ticker?.toUpperCase() === s.toUpperCase()))
+                    .map((s: string) => ({
+                        ticker: s,
+                        name: `${s} (Search suggestion)`,
+                        isDdg: true
+                    }))
+
+                setResults([...assetResults, ...ddgSuggestions].slice(0, 10))
             } catch (error) {
                 console.error("Search failed:", error)
             } finally {
@@ -129,8 +143,14 @@ export function AssetInput() {
                                     <div className="text-xs text-muted-foreground truncate max-w-[300px]">{item.name}</div>
                                 </div>
                                 <div className="text-right">
-                                    <div className="text-xs font-mono bg-muted px-1.5 py-0.5 rounded">{item.asset_type || 'Asset'}</div>
-                                    <div className="text-[10px] text-muted-foreground mt-0.5">{item.exchange}</div>
+                                    {item.isDdg ? (
+                                        <div className="text-xs font-mono bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 px-1.5 py-0.5 rounded">DDG</div>
+                                    ) : (
+                                        <>
+                                            <div className="text-xs font-mono bg-muted px-1.5 py-0.5 rounded">{item.asset_type || 'Asset'}</div>
+                                            <div className="text-[10px] text-muted-foreground mt-0.5">{item.exchange}</div>
+                                        </>
+                                    )}
                                 </div>
                             </div>
                         ))}

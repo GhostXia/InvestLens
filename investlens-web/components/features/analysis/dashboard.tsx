@@ -55,10 +55,11 @@ export function AnalysisDashboard({ ticker }: AnalysisDashboardProps) {
                     "Content-Type": "application/json",
                     ...(apiKey && { "X-LLM-API-Key": apiKey }),
                     ...(baseUrl && { "X-LLM-Base-URL": baseUrl }),
-                    ...(model && { "X-LLM-Model": model })
+                    ...(model && { "X-LLM-Model": model }),
+                    ...(quantModeEnabled && { "X-Quant-Mode": "true" })
                 }
 
-                console.log("Sending API request with headers:", { hasApiKey: !!apiKey, hasBaseUrl: !!baseUrl, hasModel: !!model, baseUrl, model })
+                console.log("Sending API request with headers:", { hasApiKey: !!apiKey, hasBaseUrl: !!baseUrl, hasModel: !!model, baseUrl, model, quantMode: quantModeEnabled })
 
                 const analysisRes = await fetch(getApiUrl("/api/v1/analyze"), {
                     method: "POST",
@@ -213,7 +214,7 @@ export function AnalysisDashboard({ ticker }: AnalysisDashboardProps) {
                         <CardHeader>
                             <CardTitle className="text-base flex items-center gap-2 text-primary">
                                 <MessageSquare className="h-4 w-4" />
-                                Analyst Vibe
+                                Analyst Advice / 分析师建议
                             </CardTitle>
                         </CardHeader>
                         <CardContent>
