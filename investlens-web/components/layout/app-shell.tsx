@@ -3,7 +3,7 @@
 import * as React from "react"
 import Link from "next/link"
 import { usePathname } from "next/navigation"
-import { LayoutDashboard, Settings, BookOpen, LineChart, PanelLeft } from "lucide-react"
+import { LayoutDashboard, Settings, BookOpen, LineChart, PanelLeft, Github } from "lucide-react"
 
 import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
@@ -152,6 +152,25 @@ export function AppShell({ children }: AppShellProps) {
                     {children}
                 </main>
             </div>
+
+            {/* Footer */}
+            <footer className="border-t bg-background py-4 px-6 sm:ml-14">
+                <div className="flex items-center justify-center gap-4 text-sm text-muted-foreground">
+                    <span>© 2026 InvestLens</span>
+                    <span>•</span>
+                    <a
+                        href="https://github.com/GhostXia/InvestLens"
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="flex items-center gap-1.5 hover:text-foreground transition-colors"
+                    >
+                        <Github className="h-4 w-4" />
+                        GitHub
+                    </a>
+                    <span>•</span>
+                    <span>MIT License</span>
+                </div>
+            </footer>
         </div>
     )
 }
