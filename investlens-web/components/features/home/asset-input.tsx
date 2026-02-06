@@ -181,50 +181,50 @@ export function AssetInput() {
                         <ArrowRight className="h-5 w-5" />
                         <span className="sr-only">Analyze</span>
                     </Button>
+
+                    {/* Autocomplete Dropdown - inside form for proper positioning */}
+                    {showResults && (results.length > 0 || loading) && (
+                        <div className="absolute top-full left-0 right-0 mt-2 bg-background border rounded-lg shadow-lg overflow-hidden py-1 max-h-80 overflow-y-auto z-50 animate-in fade-in zoom-in-95 duration-100">
+                            {loading && <div className="p-3 text-center text-sm text-muted-foreground">Searching...</div>}
+
+                            {!loading && results.map((item) => (
+                                <div
+                                    key={item.isin || item.ticker}
+                                    className="px-4 py-3 hover:bg-muted/50 cursor-pointer flex justify-between items-center transition-colors"
+                                    onClick={(e) => {
+                                        e.stopPropagation()
+                                        selectResult(item)
+                                    }}
+                                >
+                                    <div>
+                                        <div className="font-semibold">{item.ticker}</div>
+                                        <div className="text-xs text-muted-foreground truncate max-w-[300px]">{item.name}</div>
+                                    </div>
+                                    <div className="text-right">
+                                        {item.isDdg ? (
+                                            <div className="text-xs font-mono bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 px-1.5 py-0.5 rounded">DDG</div>
+                                        ) : item.isYahoo ? (
+                                            <>
+                                                <div className="text-xs font-mono bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-300 px-1.5 py-0.5 rounded">Yahoo</div>
+                                                <div className="text-[10px] text-muted-foreground mt-0.5">{item.exchange}</div>
+                                            </>
+                                        ) : item.isAkshare ? (
+                                            <>
+                                                <div className="text-xs font-mono bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-300 px-1.5 py-0.5 rounded">AkShare</div>
+                                                <div className="text-[10px] text-muted-foreground mt-0.5">{item.exchange}</div>
+                                            </>
+                                        ) : (
+                                            <>
+                                                <div className="text-xs font-mono bg-muted px-1.5 py-0.5 rounded">{item.asset_type || 'Asset'}</div>
+                                                <div className="text-[10px] text-muted-foreground mt-0.5">{item.exchange}</div>
+                                            </>
+                                        )}
+                                    </div>
+                                </div>
+                            ))}
+                        </div>
+                    )}
                 </form>
-
-                {/* Autocomplete Dropdown */}
-                {showResults && (results.length > 0 || loading) && (
-                    <div className="absolute top-16 left-0 right-0 bg-background border rounded-lg shadow-lg overflow-hidden py-1 max-h-80 overflow-y-auto z-50 animate-in fade-in zoom-in-95 duration-100">
-                        {loading && <div className="p-3 text-center text-sm text-muted-foreground">Searching...</div>}
-
-                        {!loading && results.map((item) => (
-                            <div
-                                key={item.isin || item.ticker}
-                                className="px-4 py-3 hover:bg-muted/50 cursor-pointer flex justify-between items-center transition-colors"
-                                onClick={(e) => {
-                                    e.stopPropagation()
-                                    selectResult(item)
-                                }}
-                            >
-                                <div>
-                                    <div className="font-semibold">{item.ticker}</div>
-                                    <div className="text-xs text-muted-foreground truncate max-w-[300px]">{item.name}</div>
-                                </div>
-                                <div className="text-right">
-                                    {item.isDdg ? (
-                                        <div className="text-xs font-mono bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 px-1.5 py-0.5 rounded">DDG</div>
-                                    ) : item.isYahoo ? (
-                                        <>
-                                            <div className="text-xs font-mono bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-300 px-1.5 py-0.5 rounded">Yahoo</div>
-                                            <div className="text-[10px] text-muted-foreground mt-0.5">{item.exchange}</div>
-                                        </>
-                                    ) : item.isAkshare ? (
-                                        <>
-                                            <div className="text-xs font-mono bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-300 px-1.5 py-0.5 rounded">AkShare</div>
-                                            <div className="text-[10px] text-muted-foreground mt-0.5">{item.exchange}</div>
-                                        </>
-                                    ) : (
-                                        <>
-                                            <div className="text-xs font-mono bg-muted px-1.5 py-0.5 rounded">{item.asset_type || 'Asset'}</div>
-                                            <div className="text-[10px] text-muted-foreground mt-0.5">{item.exchange}</div>
-                                        </>
-                                    )}
-                                </div>
-                            </div>
-                        ))}
-                    </div>
-                )}
 
                 {/* Trending Suggestions */}
                 <div className="mt-4 flex justify-center gap-2 text-sm text-muted-foreground">
