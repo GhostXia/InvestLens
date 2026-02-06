@@ -151,6 +151,20 @@ def get_quote(ticker: str) -> dict:
         try:
             quote = provider.get_quote(global_ticker)
             if quote:
+                # POST-PROCESSING: Patch Name for China/A-Share tickers
+                # If we fell back to YFinance, the name is likely the ticker or English.
+                # We try to overwrite it with the Chinese name from AkShare if available.
+                if _is_china_ticker(clean_ticker) and _akshare_provider:
+                    try:
+                        chinese_name = _akshare_provider.get_name(clean_ticker)
+                        if chinese_name:
+                            quote['name'] = chinese_name
+                            # Ensure currency is CNY if it's a valid China ticker
+                            if not quote.get('currency') or quote.get('currency') == 'USD':
+                                quote['currency'] = 'CNY'
+                    except Exception:
+                        pass # Squelch patching errors
+
                 return quote
         except Exception as e:
             error_details.append(f"{type(provider).__name__}: {str(e)}")

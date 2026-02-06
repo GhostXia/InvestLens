@@ -56,42 +56,22 @@ def generate_consensus_analysis(ticker: str, focus_areas: list[str], api_key: st
     # 1c. Fetch Macro Context
     macro = market_data.get_market_context()
     macro_context = ", ".join([f"{k}: {v}" for k, v in macro.items()])
-
-    # 2. Construct the Prompt
-    # We use a structured system prompt to force Markdown output
-    # The 'Persona' is defined here as an advanced quantitative analyst
-    system_prompt = (
-        "You are InvestLens, an advanced quantitative AI analyst. "
-        "Your goal is to provide a balanced, high-density financial analysis.\n"
-        "Output Format: You must strictly follow the requested structure.\n"
-        "Style: Professional, concise, data-driven. Avoid hedging language like 'I am an AI'."
-    )
     
-    # 2b. Gather Search Context (News/Sentiment)
+    # 1d. Gather Search Context (News/Sentiment)
     search_query = f"{ticker} stock news analysis sentiment"
-    # Pass ticker to search service if needed for advanced filtering, currently just query
     search_results = search_service.search_web(search_query, max_results=5)
     
     news_context = "\n".join([
         f"- [{r['title']}]({r['link']}): {r['snippet']}" 
         for r in search_results
     ]) if search_results else "No recent news found via search."
+
+    # ==========================================
+    # STAGE 1: Parallel Perspectives (The Debate)
+    # ==========================================
     
-    # Enhanced prompt for Quant Mode
-    sentiment_section = """4. **Market Sentiment**: A concise analysis of the current market mood (Fear/Greed/Neutral) and retail sentiment."""
-    
-    if quant_mode:
-        sentiment_section = """4. **High Risk Trading Plan**:
-   - **Action**: BUY / HOLD / SELL (Specific call)
-   - **Entry Strategy**: Recommended entry price zone.
-   - **Position Sizing**: **CRITICAL** - Specify detailed allocation (e.g., "Allocate 5% of portfolio" or "Buy $10,000 worth"). Provide a concrete suggested amount.
-   - **Exit Targets**:
-     - **Target Price**: Specific price target (3-6 months).
-     - **Stop Loss**: Specific stop-loss price.
-   - **Reasoning**: Justify with risk/reward ratio."""
-    
-    # Inject dynamic context into the user prompt
-    user_prompt = f"""
+    # Base Context for all agents
+    base_user_prompt = f"""
     Analyze the following asset:
     
     **Asset**: {quote.get('symbol')} ({quote.get('name')})
@@ -106,15 +86,69 @@ def generate_consensus_analysis(ticker: str, focus_areas: list[str], api_key: st
 
     **Recent News & Context**:
     {news_context}
+    """
 
-    Please provide a structured report with the following sections formatted in Markdown:
+    # --- Perspective A: THE BULL ---
+    bull_system = (
+        "You are 'The Bull', an optimistic growth investor. "
+        "Your goal is to identify maximum upside potential, competitive moats, and growth drivers. "
+        "Ignore minor risks unless fatal. Be extremely persuasive about the long case."
+    )
+    bull_response = llm_client.generate_analysis(bull_system, base_user_prompt, api_key_override=api_key, base_url_override=base_url, model_override=model)
+
+    # --- Perspective B: THE BEAR ---
+    bear_system = (
+        "You are 'The Bear', a skeptical forensic accountant and risk manager. "
+        "Your goal is to identify valuation traps, accounting red flags, and macro headwinds. "
+        "Be extremely critical. Assume the company is overhyped."
+    )
+    bear_response = llm_client.generate_analysis(bear_system, base_user_prompt, api_key_override=api_key, base_url_override=base_url, model_override=model)
+
+    # ==========================================
+    # STAGE 2: The Judge (The Verdict)
+    # ==========================================
     
-    1. **Executive Summary**: A brief 3-sentence overview of the current setup.
-    2. **Bullish Thesis**: 3 key bullet points for the long case.
-    3. **Bearish Thesis**: 3 key bullet points for the short/risk case.
-    {sentiment_section}
-    5. **Confidence Score**: An integer from 0-100 indicating conviction in the analysis availability.
+    # Enhanced prompt for Quant Mode
+    sentiment_section = """4. **Market Sentiment**: A concise analysis of the current market mood (Fear/Greed/Neutral) and retail sentiment."""
+    
+    if quant_mode:
+        sentiment_section = """4. **High Risk Trading Plan**:
+   - **Action**: BUY / HOLD / SELL (Specific call based on the winning argument)
+   - **Entry Strategy**: Recommended entry price zone.
+   - **Position Sizing**: **CRITICAL** - Specify detailed allocation (e.g., "Allocate 5% of portfolio" or "Buy $10,000 worth"). Provide a concrete suggested amount.
+   - **Exit Targets**:
+     - **Target Price**: Specific price target (3-6 months).
+     - **Stop Loss**: Specific stop-loss price.
+   - **Reasoning**: Justify with risk/reward ratio."""
 
+    judge_system = (
+        "You are InvestLens, an impartial 'LLM-as-a-Judge' Consensus Engine. "
+        "Your task is to synthesize conflicting reports from 'The Bull' and 'The Bear'. "
+        "weigh the evidence, resolve contradictions, and issue a Final Verdict.\n"
+        "Output Format: You must strictly follow the requested structure.\n"
+        "Style: Professional, concise, data-driven. Act as the final decision maker."
+    )
+    
+    judge_prompt = f"""
+    {base_user_prompt}
+    
+    ---
+    **Perspective A (The Bull Case)**:
+    {bull_response}
+    
+    ---
+    **Perspective B (The Bear Case)**:
+    {bear_response}
+    
+    ---
+    **YOUR TASK**:
+    Synthesize the above perspectives into a final trusted report.
+    1. **Executive Summary**: A brief 3-sentence overview of the current setup.
+    2. **Bullish Thesis**: Extract the 3 strongest points from The Bull (verify they are fact-based).
+    3. **Bearish Thesis**: Extract the 3 strongest risks from The Bear.
+    {sentiment_section}
+    5. **Confidence Score**: An integer from 0-100. Lower it if Bull and Bear strongly disagree on facts.
+    
     Response format:
     ---SUMMARY---
     [Content]
@@ -127,10 +161,9 @@ def generate_consensus_analysis(ticker: str, focus_areas: list[str], api_key: st
     ---SCORE---
     [Integer]
     """
-    
-    # 3. Call AI Model
-    # Pass the user's specific API key if provided
-    raw_text = llm_client.generate_analysis(system_prompt, user_prompt, api_key_override=api_key, base_url_override=base_url, model_override=model)
+
+    # 3. Call AI Model (The Judge)
+    raw_text = llm_client.generate_analysis(judge_system, judge_prompt, api_key_override=api_key, base_url_override=base_url, model_override=model)
 
     # 4. Parse the customized format
     # This is a naive parser for the prototype. In prod, use JSON mode.

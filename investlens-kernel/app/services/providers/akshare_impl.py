@@ -216,6 +216,19 @@ class AkShareProvider(BaseDataProvider):
             logger.error(f"AkShare quote failed: {str(e)}")
             return None
 
+    def get_name(self, ticker: str) -> Optional[str]:
+        """
+        Look up the name for a ticker using the cached map.
+        Returns None if not found or map unavailable.
+        """
+        try:
+            name_map = self._get_code_name_map()
+            if name_map and ticker in name_map:
+                return name_map[ticker]
+        except Exception:
+            return None
+        return None
+
     def get_historical(self, ticker: str, period: str = "1y") -> Optional[List[Dict[str, Any]]]:
         """
         Fetch historical OHLCV data for A-share.

@@ -1,0 +1,7 @@
+Initialize AkShareProvider...
+
+--- Testing get_name('603986') ---
+
+Result Name: 兆易创新
+
+SUCCESS: Name is correct.
