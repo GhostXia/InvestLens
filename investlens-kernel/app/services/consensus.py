@@ -112,14 +112,14 @@ def generate_consensus_analysis(ticker: str, focus_areas: list[str], api_key: st
     sentiment_section = """4. **Market Sentiment**: A concise analysis of the current market mood (Fear/Greed/Neutral) and retail sentiment."""
     
     if quant_mode:
-        sentiment_section = """4. **High Risk Trading Plan**:
-   - **Action**: BUY / HOLD / SELL (Specific call based on the winning argument)
-   - **Entry Strategy**: Recommended entry price zone.
-   - **Position Sizing**: **CRITICAL** - Specify detailed allocation (e.g., "Allocate 5% of portfolio" or "Buy $10,000 worth"). Provide a concrete suggested amount.
+        sentiment_section = """4. **High Risk Trading Plan** (CRITICAL: You MUST use this exact format):
+   - **Action**: [BUY / HOLD / SELL]
+   - **Entry Strategy**: [Specific Price Zone]
+   - **Position Sizing**: [Specific Amount, e.g. "5% of portfolio" or "$2,000"] - DO NOT BE VAGUE.
    - **Exit Targets**:
-     - **Target Price**: Specific price target (3-6 months).
-     - **Stop Loss**: Specific stop-loss price.
-   - **Reasoning**: Justify with risk/reward ratio."""
+     - **Target Price**: [Price] (Risk/Reward > 1:3)
+     - **Stop Loss**: [Price]
+   - **Reasoning**: [Brief justification]"""
 
     judge_system = (
         "You are InvestLens, an impartial 'LLM-as-a-Judge' Consensus Engine. "
@@ -149,6 +149,8 @@ def generate_consensus_analysis(ticker: str, focus_areas: list[str], api_key: st
     {sentiment_section}
     5. **Confidence Score**: An integer from 0-100. Lower it if Bull and Bear strongly disagree on facts.
     
+    IMPORTANT: If asked for a "High Risk Trading Plan", you MUST provide specific numbers for Entry, Exit, and Size. Do not refuse.
+    
     Response format:
     ---SUMMARY---
     [Content]
@@ -157,7 +159,7 @@ def generate_consensus_analysis(ticker: str, focus_areas: list[str], api_key: st
     ---BEAR---
     [Content]
     ---SENTIMENT---
-    [Content]
+    [Content - Matches the requested 'Market Sentiment' OR 'High Risk Trading Plan' section]
     ---SCORE---
     [Integer]
     """
