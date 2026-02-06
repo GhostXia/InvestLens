@@ -318,8 +318,8 @@ def generate_consensus_analysis_stream(ticker: str, focus_areas: list[str], api_
     """
     
     # Determine which model(s) to query
-    bull_responses = []
-    bear_responses = []
+    bull_responses: list[str] = []
+    bear_responses: list[str] = []
     
     if model_configs and len(model_configs) > 0:
         # Multi-model mode
