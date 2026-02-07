@@ -1,5 +1,10 @@
 # InvestLens 🔍
 
+[![English](https://img.shields.io/badge/Lang-English-blue)](README.md)
+[![中文](https://img.shields.io/badge/Lang-中文-red)](README-zh.md)
+![Visitors](https://visitor-badge.laobi.icu/badge?page_id=GhostXia.InvestLens)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
+
 > **Intelligent Investment Decision Support System**
 >
 > *Real-time Market Data, Multi-Model AI Consensus, and Quantitative Gating.*
