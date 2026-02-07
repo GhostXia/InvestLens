@@ -4,12 +4,14 @@ import * as React from "react"
 import Link from "next/link"
 import { usePathname } from "next/navigation"
 import { LayoutDashboard, Settings, BookOpen, LineChart, PanelLeft, Github, Star } from "lucide-react"
+import { useTranslations } from "next-intl"
 
 import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet"
 import { ThemeProvider } from "@/components/theme-provider"
 import { ModeToggle } from "@/components/mode-toggle"
+import { LanguageToggle } from "@/components/language-toggle"
 
 /**
  * Props for the AppShell wrapper
@@ -36,36 +38,38 @@ interface AppShellProps {
  */
 export function AppShell({ children }: AppShellProps) {
     const pathname = usePathname()
+    const t = useTranslations("nav")
+    const tCommon = useTranslations("common")
 
     // Navigation configuration
     const routes = [
         {
             href: "/",
-            label: "Dashboard",
+            label: t("dashboard"),
             icon: LayoutDashboard,
             active: pathname === "/",
         },
         {
             href: "/analysis",
-            label: "Analysis",
+            label: t("analysis"),
             icon: LineChart,
             active: pathname.startsWith("/analysis"),
         },
         {
             href: "/wiki",
-            label: "Wiki",
+            label: t("wiki"),
             icon: BookOpen,
             active: pathname.startsWith("/wiki"),
         },
         {
             href: "/watchlist",
-            label: "Watchlist",
+            label: t("watchlist"),
             icon: Star,
             active: pathname.startsWith("/watchlist"),
         },
         {
             href: "/settings",
-            label: "Settings",
+            label: t("settings"),
             icon: Settings,
             active: pathname.startsWith("/settings"),
         },
@@ -79,7 +83,7 @@ export function AppShell({ children }: AppShellProps) {
                     <SheetTrigger asChild>
                         <Button size="icon" variant="outline" className="sm:hidden">
                             <PanelLeft className="h-5 w-5" />
-                            <span className="sr-only">Toggle Menu</span>
+                            <span className="sr-only">{t("toggleMenu")}</span>
                         </Button>
                     </SheetTrigger>
                     <SheetContent side="left" className="sm:max-w-xs">
@@ -111,6 +115,7 @@ export function AppShell({ children }: AppShellProps) {
                     <span className="font-bold text-lg">InvestLens</span>
                 </div>
                 <div className="ml-auto flex items-center gap-2">
+                    <LanguageToggle />
                     <ModeToggle />
                 </div>
             </header>
@@ -162,7 +167,7 @@ export function AppShell({ children }: AppShellProps) {
             {/* Footer */}
             <footer className="border-t bg-background py-4 px-6 sm:ml-14">
                 <div className="flex items-center justify-center gap-4 text-sm text-muted-foreground">
-                    <span>© 2026 InvestLens</span>
+                    <span>{tCommon("footer.copyright")}</span>
                     <span>•</span>
                     <a
                         href="https://github.com/GhostXia/InvestLens"
@@ -174,7 +179,7 @@ export function AppShell({ children }: AppShellProps) {
                         GitHub
                     </a>
                     <span>•</span>
-                    <span>MIT License</span>
+                    <span>{tCommon("footer.license")}</span>
                 </div>
             </footer>
         </div>

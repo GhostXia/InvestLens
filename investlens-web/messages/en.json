@@ -1,0 +1,117 @@
+{
+    "common": {
+        "appName": "InvestLens",
+        "footer": {
+            "copyright": "© 2026 InvestLens",
+            "license": "MIT License"
+        },
+        "loading": "Loading...",
+        "error": "Error",
+        "save": "Save",
+        "cancel": "Cancel",
+        "confirm": "Confirm",
+        "delete": "Delete",
+        "edit": "Edit",
+        "add": "Add",
+        "search": "Search",
+        "back": "Back"
+    },
+    "nav": {
+        "dashboard": "Dashboard",
+        "analysis": "Analysis",
+        "wiki": "Wiki",
+        "watchlist": "Watchlist",
+        "settings": "Settings",
+        "toggleMenu": "Toggle Menu"
+    },
+    "home": {
+        "title": "InvestLens",
+        "subtitle": "AI-Native Investment Analysis & Multi-Model Consensus Engine",
+        "searchTips": {
+            "main": "Use Ticker, ISIN, Name, or 中文名称 for A-Shares",
+            "examples": "Examples"
+        },
+        "searchPlaceholder": "Ticker, ISIN, or Name (e.g., AAPL, HK0000181112, Apple Inc.)",
+        "trending": "Trending",
+        "searching": "Searching...",
+        "analyze": "Analyze"
+    },
+    "settings": {
+        "title": "Settings",
+        "description": "Manage your preferences and local credentials",
+        "aiProvider": {
+            "title": "AI Provider Configuration",
+            "description": "Configure your LLM connectivity. Keys are stored locally in your browser and never sent to our servers.",
+            "baseUrl": "API Base URL",
+            "baseUrlPlaceholder": "https://api.openai.com/v1",
+            "baseUrlHint": "Endpoint for OpenAI, DeepSeek, or local proxies (e.g., Ollama)",
+            "fetchModels": "Fetch Available Models",
+            "fetching": "Fetching...",
+            "model": "Model",
+            "modelHint": "Select from available models or choose Custom",
+            "modelHintFetch": "Click 'Fetch Available Models' to load models from your endpoint",
+            "noModels": "No models fetched",
+            "customModel": "Custom (Enter Below)",
+            "saved": "(Saved)",
+            "apiKey": "API Key",
+            "apiKeyPlaceholder": "sk-...",
+            "apiKeyHint": "Your API key for authentication",
+            "saveConfig": "Save Configuration",
+            "saveSuccess": "✓ Saved successfully"
+        },
+        "search": {
+            "title": "Search Configuration",
+            "description": "Enable multiple search providers for parallel autocomplete suggestions",
+            "duckduckgo": "DuckDuckGo",
+            "duckduckgoDesc": "General web search suggestions",
+            "yahoo": "Yahoo Finance",
+            "yahooDesc": "Precise financial tickers with market info",
+            "akshare": "AkShare (China)",
+            "akshareDesc": "A-Shares, funds, supports Chinese search",
+            "resultsHint": "Results from each provider will be labeled (DDG / Yahoo / AkShare)"
+        },
+        "quant": {
+            "title": "Quantitative Capabilities",
+            "description": "Unlock advanced features like predictive K-lines and portfolio optimization",
+            "enable": "Enable Quant Mode",
+            "enabled": "Active. Features unlocked. Tread carefully.",
+            "disabled": "Disabled. System operating in strict Analysis Mode."
+        },
+        "danger": {
+            "title": "Danger Zone",
+            "description": "Permanently delete all privacy-sensitive data. This action cannot be undone.",
+            "clearAll": "Clear All Privacy Data",
+            "clearAllDesc": "This will permanently delete:",
+            "clearItem1": "API Keys and endpoints (frontend)",
+            "clearItem2": "Model preferences (frontend)",
+            "clearItem3": "Data source configurations (backend)",
+            "clearItem4": "Quant Mode settings",
+            "clearing": "Clearing...",
+            "clearButton": "Clear All Privacy Data"
+        },
+        "riskDialog": {
+            "title": "Use with Excessive Caution",
+            "intro": "By enabling Quant Mode, you gain access to predictive models and trade-like signals. Please confirm you understand the following:",
+            "risk1": "Predictive K-Lines are AI hallucinations based on historical patterns and do not guarantee future performance.",
+            "risk2": "This software is for educational and analytical purposes only.",
+            "risk3": "The author (and the AI) assumes no responsibility for any financial losses incurred based on these outputs.",
+            "cancel": "Cancel",
+            "confirm": "I Understand the Risks"
+        },
+        "clearDialog": {
+            "title": "Confirm Privacy Data Deletion",
+            "confirm": "Are you absolutely sure you want to delete ALL privacy data?",
+            "intro": "This action will permanently delete:",
+            "frontend": "Frontend: API keys, base URLs, model preferences, Quant Mode settings",
+            "backend": "Backend: Data source configurations and API endpoint settings",
+            "warning": "This action cannot be undone. You will need to reconfigure everything from scratch.",
+            "cancel": "Cancel",
+            "confirm_button": "Yes, Delete Everything"
+        }
+    },
+    "language": {
+        "switch": "Switch Language",
+        "zh-CN": "简体中文",
+        "en": "English"
+    }
+}

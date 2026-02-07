@@ -7,6 +7,7 @@ import { Card, CardContent } from "@/components/ui/card"
 import { useState, useRef, useEffect } from "react"
 import { useRouter } from "next/navigation"
 import { getApiUrl } from "@/lib/api-config"
+import { useTranslations } from "next-intl"
 
 import { useSettingsStore } from "@/lib/store/settings"
 
@@ -30,6 +31,7 @@ export function AssetInput() {
     const [showResults, setShowResults] = useState(false)
     const [loading, setLoading] = useState(false)
     const router = useRouter()
+    const t = useTranslations("home")
 
     // Debounce timer ref
     const debounceRef = useRef<NodeJS.Timeout | null>(null)
@@ -168,9 +170,9 @@ export function AssetInput() {
             <CardContent className="p-0 relative">
                 {/* Search Tips */}
                 <div className="text-center mb-3 text-sm text-muted-foreground">
-                    <p className="mb-1">Use <strong>Ticker</strong>, <strong>ISIN</strong>, <strong>Name</strong>, or <strong>中文名称</strong> for A-Shares</p>
+                    <p className="mb-1">{t("searchTips.main")}</p>
                     <p className="text-xs opacity-75">
-                        Examples: <code className="bg-muted px-1 rounded">AAPL</code> · <code className="bg-muted px-1 rounded">0700.HK</code> · <code className="bg-muted px-1 rounded">平安银行</code> · <code className="bg-muted px-1 rounded">Tesla Inc</code>
+                        {t("searchTips.examples")}: <code className="bg-muted px-1 rounded">AAPL</code> · <code className="bg-muted px-1 rounded">0700.HK</code> · <code className="bg-muted px-1 rounded">平安银行</code> · <code className="bg-muted px-1 rounded">Tesla Inc</code>
                     </p>
                 </div>
 
@@ -182,7 +184,7 @@ export function AssetInput() {
                     <Search className="absolute left-4 h-5 w-5 text-muted-foreground" />
                     <Input
                         className="h-14 w-full rounded-full border-2 border-muted bg-background pl-12 pr-12 text-lg shadow-sm transition-all focus-visible:border-primary focus-visible:ring-0 focus-visible:ring-offset-0"
-                        placeholder="Ticker, ISIN, or Name (e.g., AAPL, HK0000181112, Apple Inc.)"
+                        placeholder={t("searchPlaceholder")}
                         value={query}
                         onChange={(e) => handleSearchChange(e.target.value)}
                         onFocus={() => { if (results.length > 0) setShowResults(true) }}
@@ -194,13 +196,13 @@ export function AssetInput() {
                         disabled={!query.trim()}
                     >
                         <ArrowRight className="h-5 w-5" />
-                        <span className="sr-only">Analyze</span>
+                        <span className="sr-only">{t("analyze")}</span>
                     </Button>
 
                     {/* Autocomplete Dropdown - inside form for proper positioning */}
                     {showResults && (results.length > 0 || loading) && (
                         <div className="absolute top-full left-0 right-0 mt-2 bg-background border rounded-lg shadow-lg overflow-hidden py-1 max-h-80 overflow-y-auto z-50 animate-in fade-in zoom-in-95 duration-100">
-                            {loading && <div className="p-3 text-center text-sm text-muted-foreground">Searching...</div>}
+                            {loading && <div className="p-3 text-center text-sm text-muted-foreground">{t("searching")}</div>}
 
                             {!loading && results.map((item, index) => (
                                 <div
@@ -248,7 +250,7 @@ export function AssetInput() {
 
                 {/* Trending Suggestions */}
                 <div className="mt-4 flex justify-center gap-2 text-sm text-muted-foreground">
-                    <span>Trending:</span>
+                    <span>{t("trending")}:</span>
                     <button type="button" onClick={() => handleSearchChange('NVDA')} className="hover:text-primary underline decoration-dotted">NVDA</button>
                     <button type="button" onClick={() => handleSearchChange('BTC-USD')} className="hover:text-primary underline decoration-dotted">BTC</button>
                     <button type="button" onClick={() => handleSearchChange('TSLA')} className="hover:text-primary underline decoration-dotted">TSLA</button>

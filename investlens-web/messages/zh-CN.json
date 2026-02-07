@@ -1,0 +1,117 @@
+{
+    "common": {
+        "appName": "InvestLens",
+        "footer": {
+            "copyright": "© 2026 InvestLens",
+            "license": "MIT License"
+        },
+        "loading": "加载中...",
+        "error": "出错了",
+        "save": "保存",
+        "cancel": "取消",
+        "confirm": "确认",
+        "delete": "删除",
+        "edit": "编辑",
+        "add": "添加",
+        "search": "搜索",
+        "back": "返回"
+    },
+    "nav": {
+        "dashboard": "仪表盘",
+        "analysis": "分析",
+        "wiki": "百科",
+        "watchlist": "观察列表",
+        "settings": "设置",
+        "toggleMenu": "切换菜单"
+    },
+    "home": {
+        "title": "InvestLens",
+        "subtitle": "AI 驱动的投资分析与多模型共识引擎",
+        "searchTips": {
+            "main": "使用股票代码、ISIN、名称或中文名称搜索 A 股",
+            "examples": "示例"
+        },
+        "searchPlaceholder": "股票代码、ISIN 或名称 (如 AAPL, HK0000181112, Apple Inc.)",
+        "trending": "热门",
+        "searching": "搜索中...",
+        "analyze": "分析"
+    },
+    "settings": {
+        "title": "设置",
+        "description": "管理您的偏好设置和本地凭据",
+        "aiProvider": {
+            "title": "AI 服务配置",
+            "description": "配置 LLM 连接。密钥仅存储在您的浏览器本地，不会发送到我们的服务器。",
+            "baseUrl": "API 地址",
+            "baseUrlPlaceholder": "https://api.openai.com/v1",
+            "baseUrlHint": "OpenAI、DeepSeek 或本地代理 (如 Ollama) 的接口地址",
+            "fetchModels": "获取可用模型",
+            "fetching": "获取中...",
+            "model": "模型",
+            "modelHint": "从可用模型中选择或选择自定义",
+            "modelHintFetch": "点击「获取可用模型」从接口加载模型列表",
+            "noModels": "未获取到模型",
+            "customModel": "自定义 (手动输入)",
+            "saved": "(已保存)",
+            "apiKey": "API 密钥",
+            "apiKeyPlaceholder": "sk-...",
+            "apiKeyHint": "用于身份验证的 API 密钥",
+            "saveConfig": "保存配置",
+            "saveSuccess": "✓ 保存成功"
+        },
+        "search": {
+            "title": "搜索配置",
+            "description": "启用多个搜索提供商以获取并行自动完成建议",
+            "duckduckgo": "DuckDuckGo",
+            "duckduckgoDesc": "通用网络搜索建议",
+            "yahoo": "Yahoo Finance",
+            "yahooDesc": "精确的金融股票代码和市场信息",
+            "akshare": "AkShare (中国)",
+            "akshareDesc": "A股、基金，支持中文搜索",
+            "resultsHint": "每个提供商的结果将带有标签 (DDG / Yahoo / AkShare)"
+        },
+        "quant": {
+            "title": "量化功能",
+            "description": "解锁高级功能，如预测 K 线和投资组合优化",
+            "enable": "启用量化模式",
+            "enabled": "已激活。功能已解锁，请谨慎操作。",
+            "disabled": "已禁用。系统以严格分析模式运行。"
+        },
+        "danger": {
+            "title": "危险区域",
+            "description": "永久删除所有隐私敏感数据，此操作无法撤销。",
+            "clearAll": "清除所有隐私数据",
+            "clearAllDesc": "这将永久删除：",
+            "clearItem1": "API 密钥和接口地址 (前端)",
+            "clearItem2": "模型偏好设置 (前端)",
+            "clearItem3": "数据源配置 (后端)",
+            "clearItem4": "量化模式设置",
+            "clearing": "清除中...",
+            "clearButton": "清除所有隐私数据"
+        },
+        "riskDialog": {
+            "title": "请谨慎使用",
+            "intro": "启用量化模式后，您将获得预测模型和交易信号功能。请确认您理解以下内容：",
+            "risk1": "预测 K 线是基于历史模式的 AI 推测，不保证未来表现。",
+            "risk2": "本软件仅用于教育和分析目的。",
+            "risk3": "作者（和 AI）不对基于这些输出造成的任何财务损失承担责任。",
+            "cancel": "取消",
+            "confirm": "我理解风险"
+        },
+        "clearDialog": {
+            "title": "确认删除隐私数据",
+            "confirm": "您确定要删除所有隐私数据吗？",
+            "intro": "此操作将永久删除：",
+            "frontend": "前端：API 密钥、地址、模型偏好、量化模式设置",
+            "backend": "后端：数据源配置和 API 接口设置",
+            "warning": "此操作无法撤销。您需要从头重新配置一切。",
+            "cancel": "取消",
+            "confirm_button": "是的，删除所有内容"
+        }
+    },
+    "language": {
+        "switch": "切换语言",
+        "zh-CN": "简体中文",
+        "en": "English"
+    }
+}
