@@ -29,6 +29,9 @@ from .providers.akshare_impl import AkShareProvider
 # pyre-ignore[21]: relative import
 from .config_manager import config_manager
 
+# pyre-ignore[21]: tenacity installed but not found
+from tenacity import retry, stop_after_attempt, wait_exponential, retry_if_exception_type
+
 # Configure logger
 logger = logging.getLogger(__name__)
 
@@ -107,6 +110,11 @@ def reload_providers():
 reload_providers()
 
 
+@retry(
+    stop=stop_after_attempt(3),
+    wait=wait_exponential(multiplier=1, min=2, max=10),
+    reraise=False # Market data failure should return error dict, not crash app
+)
 def get_quote(ticker: str) -> dict:
     """
     Fetches the latest quote using available providers.
@@ -178,6 +186,11 @@ def get_quote(ticker: str) -> dict:
         "details": "; ".join(error_details)
     }
 
+@retry(
+    stop=stop_after_attempt(3),
+    wait=wait_exponential(multiplier=1, min=2, max=10),
+    reraise=False
+)
 def get_historical_data(ticker: str, period: str = "6mo", interval: str = "1d") -> dict:
     """
     Fetches historical OHLC (Open, High, Low, Close) data for a ticker.

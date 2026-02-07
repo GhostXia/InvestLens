@@ -10,9 +10,10 @@ This service is responsible for:
 4. Interfacing with Python quantitative libraries (Pandas, NumPy, TA-Lib).
 """
 
+import os
 import logging
 # pyre-ignore[21]: fastapi installed but not found
-from fastapi import FastAPI, HTTPException, Header
+from fastapi import FastAPI, HTTPException, Header, Request
 # pyre-ignore[21]: fastapi installed but not found
 from fastapi.middleware.cors import CORSMiddleware
 # pyre-ignore[21]: fastapi installed but not found
@@ -23,17 +24,49 @@ from app.services import market_data, consensus
 from app.routers import config, privacy, search, fund, watchlist, portfolio
 # pyre-ignore[21]: app.models not found
 from app.models.analysis import AnalysisRequest, AnalysisResponse
+# pyre-ignore[21]: app.middleware not found
+from app.middleware import TraceIdMiddleware, get_trace_id
+# pyre-ignore[21]: app.models not found
+from app.models.response import success_response, bad_request, not_found, upstream_error
 
 logger = logging.getLogger(__name__)
 
-# Initialize the FastAPI application with metadata
-app = FastAPI(title="InvestLens Quant Kernel", version="0.1.0")
+# pyre-ignore[21]: slowapi installed but not found
+from slowapi import Limiter, _rate_limit_exceeded_handler
+# pyre-ignore[21]: slowapi installed but not found
+from slowapi.util import get_remote_address
+# pyre-ignore[21]: slowapi installed but not found
+from slowapi.errors import RateLimitExceeded
+# pyre-ignore[21]: slowapi installed but not found
+from slowapi.middleware import SlowAPIMiddleware
 
-# Configure CORS
-# In production, allow_origins should be restricted to the frontend domain
+# Initialize the FastAPI application with metadata
+app = FastAPI(title="InvestLens Quant Kernel", version="0.2.0")
+
+# Initialize Rate Limiter
+limiter = Limiter(key_func=get_remote_address)
+app.state.limiter = limiter
+app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
+
+# =============================================================================
+# Middleware Stack
+# =============================================================================
+
+# 1. TraceId Middleware - adds X-Trace-ID to all requests/responses
+app.add_middleware(TraceIdMiddleware)
+
+# 2. SlowAPI Middleware
+app.add_middleware(SlowAPIMiddleware)
+
+# 2. CORS Middleware
+# In production, set CORS_ORIGINS environment variable to restrict origins
+# Example: CORS_ORIGINS=https://yourdomain.com,https://app.yourdomain.com
+CORS_ORIGINS = os.getenv("CORS_ORIGINS", "*").split(",")
+CORS_ORIGINS = [origin.strip() for origin in CORS_ORIGINS]  # Clean whitespace
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=CORS_ORIGINS,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -146,7 +179,8 @@ def convert_identifier(identifier: str):
     return asset_search.convert_to_ticker(identifier)
 
 @app.get("/api/v1/quote/{ticker}")
-def get_market_quote(ticker: str):
+@limiter.limit("60/minute")
+def get_market_quote(request: Request, ticker: str):
     """
     Market Data Endpoint
     --------------------
@@ -155,12 +189,29 @@ def get_market_quote(ticker: str):
     
     Returns basic market info (price, change, etc).
     """
+    trace_id = get_trace_id(request)
     data = market_data.get_quote(ticker)
+    
     if "error" in data:
-         # In a real app, we might want to return 404 or 400 based on error type
-         # For now, returning the error dict with 200 is acceptable for the prototype
-         return data
-    return data
+        error_msg = data.get("error", "Unknown error")
+        # Determine appropriate status code based on error type
+        if "not found" in error_msg.lower() or "no data" in error_msg.lower():
+            raise HTTPException(
+                status_code=404,
+                detail=not_found("Asset not found", error_msg, trace_id)
+            )
+        elif "timeout" in error_msg.lower() or "connection" in error_msg.lower():
+            raise HTTPException(
+                status_code=502,
+                detail=upstream_error("Data source unavailable", error_msg, trace_id)
+            )
+        else:
+            raise HTTPException(
+                status_code=500,
+                detail={"code": 500, "message": error_msg, "trace_id": trace_id}
+            )
+    
+    return success_response(data, trace_id=trace_id)
 
 @app.get("/api/v1/market/history/{ticker}")
 def get_historical_market_data(ticker: str, period: str = "6mo"):
@@ -207,8 +258,10 @@ def get_price_prediction(ticker: str, days: int = 7):
 
 
 @app.post("/api/v1/analyze", response_model=AnalysisResponse)
+@limiter.limit("5/minute")
 def analyze_asset(
-    request: AnalysisRequest,
+    request: Request,
+    analysis_request: AnalysisRequest,
     x_llm_api_key: str | None = Header(default=None),
     x_llm_base_url: str | None = Header(default=None),
     x_llm_model: str | None = Header(default=None),
@@ -236,7 +289,7 @@ def analyze_asset(
     import json
     
     try:
-        logger.info(f"Received analysis request for {request.ticker}")
+        logger.info(f"Received analysis request for {analysis_request.ticker}")
         logger.info(f"API Key provided: {bool(x_llm_api_key)}")
         logger.info(f"Base URL provided: {x_llm_base_url}")
         logger.info(f"Model provided: {x_llm_model}")
@@ -255,8 +308,8 @@ def analyze_asset(
                 logger.warning("Failed to parse X-Model-Configs header")
         
         response = consensus.generate_consensus_analysis(
-            ticker=request.ticker,
-            focus_areas=request.focus_areas,
+            ticker=analysis_request.ticker,
+            focus_areas=analysis_request.focus_areas,
             api_key=x_llm_api_key,
             base_url=x_llm_base_url,
             model=x_llm_model,
@@ -269,8 +322,10 @@ def analyze_asset(
 
 
 @app.post("/api/v1/analyze/stream")
+@limiter.limit("5/minute")
 def analyze_asset_stream(
-    request: AnalysisRequest,
+    request: Request,
+    analysis_request: AnalysisRequest,
     x_llm_api_key: str | None = Header(default=None),
     x_llm_base_url: str | None = Header(default=None),
     x_llm_model: str | None = Header(default=None),
@@ -291,7 +346,7 @@ def analyze_asset_stream(
     """
     import json
     
-    logger.info(f"Received STREAMING analysis request for {request.ticker}")
+    logger.info(f"Received STREAMING analysis request for {analysis_request.ticker}")
     
     quant_mode_enabled = x_quant_mode == "true"
     
@@ -306,8 +361,8 @@ def analyze_asset_stream(
     
     return StreamingResponse(
         consensus.generate_consensus_analysis_stream(
-            ticker=request.ticker,
-            focus_areas=request.focus_areas,
+            ticker=analysis_request.ticker,
+            focus_areas=analysis_request.focus_areas,
             api_key=x_llm_api_key,
             base_url=x_llm_base_url,
             model=x_llm_model,
@@ -324,8 +379,10 @@ def analyze_asset_stream(
 
 
 @app.post("/api/v1/chat")
+@limiter.limit("20/minute")
 def chat_with_context(
-    request: dict,
+    request: Request,
+    chat_request: dict,
     x_llm_api_key: str | None = Header(default=None),
     x_llm_base_url: str | None = Header(default=None),
     x_llm_model: str | None = Header(default=None)
@@ -349,9 +406,9 @@ def chat_with_context(
     from openai import OpenAI
     
     try:
-        message = request.get("message", "")
-        context = request.get("context", {})
-        history = request.get("history", [])
+        message = chat_request.get("message", "")
+        context = chat_request.get("context", {})
+        history = chat_request.get("history", [])
         
         # Build system prompt with context
         ticker = context.get("ticker", "Unknown")
@@ -412,9 +469,7 @@ Guidelines:
         raise HTTPException(status_code=500, detail=str(e))
 
 app.include_router(config.router)
-app.include_router(fund.legacy_router)
-app.include_router(watchlist.router)
-app.include_router(portfolio.router)
-app.include_router(fund.router)  # New unified /holdings endpoint
-app.include_router(fund.legacy_router)  # Legacy /fund endpoint for compatibility
-app.include_router(watchlist.router)  # User watchlist management
+app.include_router(fund.router)             # New unified /holdings endpoint
+app.include_router(fund.legacy_router)      # Legacy /fund endpoint for compatibility
+app.include_router(watchlist.router)        # User watchlist management
+app.include_router(portfolio.router)        # AI Portfolio Advisor

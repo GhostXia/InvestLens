@@ -17,6 +17,8 @@ import os
 from openai import OpenAI
 import logging
 from typing import Optional
+# pyre-ignore[21]: tenacity installed but not found
+from tenacity import retry, stop_after_attempt, wait_exponential, retry_if_exception_type
 
 logger = logging.getLogger(__name__)
 
@@ -37,6 +39,12 @@ class LLMProvider:
             base_url=self.base_url
         )
 
+    @retry(
+        retry=retry_if_exception_type(Exception), # In prod, be specific: APITimeoutError, etc.
+        stop=stop_after_attempt(3),
+        wait=wait_exponential(multiplier=1, min=2, max=10),
+        reraise=True
+    )
     def generate_analysis(self, system_prompt: str, user_prompt: str, api_key_override: str | None = None, base_url_override: str | None = None, model_override: str | None = None) -> str:
         """
         Executes a synchronus generation call to the LLM.
@@ -84,14 +92,23 @@ class LLMProvider:
                     {"role": "user", "content": user_prompt}
                 ],
                 temperature=0.7, # Balanced creativity and precision
-                max_tokens=1500
+                max_tokens=1500,
+                timeout=30.0 # prevent hanging requests
             )
             
             return response.choices[0].message.content
             
         except Exception as e:
-            logger.error(f"LLM Generation Failed: {str(e)}")
-            # Fallback for when API is not configured or fails
+            logger.error(f"LLM Generation Failed (Attempt): {str(e)}")
+            raise e # Let tenacity retry
+            
+    def generate_analysis_safe(self, system_prompt: str, user_prompt: str, **kwargs) -> str:
+        """
+        Safe wrapper that catches exceptions after retries are exhausted.
+        """
+        try:
+            return self.generate_analysis(system_prompt, user_prompt, **kwargs)
+        except Exception:
             return self._mock_fallback(user_prompt)
 
     def _mock_fallback(self, prompt: str) -> str:
