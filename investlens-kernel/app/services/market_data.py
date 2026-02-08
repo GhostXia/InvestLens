@@ -136,12 +136,28 @@ def get_quote(ticker: str) -> dict:
     # Handle suffixed tickers (e.g. 603986.SS) by stripping suffix for AkShare
     clean_ticker = ticker
     if ticker.endswith(('.SS', '.SZ', '.ss', '.sz')):
+        # pyre-ignore[16]: Indexing string
         clean_ticker = ticker[:-3]
 
     if _is_china_ticker(clean_ticker) and _akshare_provider:
         try:
             quote = _akshare_provider.get_quote(clean_ticker)
             if quote:
+                # Enhancement: If name is just the ticker (common AkShare fallback), try to get real name from YFinance
+                if quote['name'] == clean_ticker or quote['name'] == ticker:
+                    try:
+                        # Try YFinance for name
+                        yf_ticker = _normalize_ticker_for_yfinance(ticker)
+                        info = yf.Ticker(yf_ticker).info
+                        if 'longName' in info:
+                            # pyre-ignore[16]: Item assignment
+                            quote['name'] = info['longName']
+                        elif 'shortName' in info:
+                            # pyre-ignore[16]: Item assignment
+                            quote['name'] = info['shortName']
+                    except Exception:
+                        pass # Keep original (numeric) name if YF fails
+                
                 return quote
         except Exception as e:
             error_details.append(f"AkShare: {str(e)}")

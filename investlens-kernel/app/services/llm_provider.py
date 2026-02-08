@@ -38,6 +38,7 @@ class LLMProvider:
             api_key=self.api_key,
             base_url=self.base_url
         )
+        self.timeout = float(os.getenv("LLM_TIMEOUT", "120.0"))
 
     @retry(
         retry=retry_if_exception_type(Exception), # In prod, be specific: APITimeoutError, etc.
@@ -93,7 +94,7 @@ class LLMProvider:
                 ],
                 temperature=0.7, # Balanced creativity and precision
                 max_tokens=1500,
-                timeout=30.0 # prevent hanging requests
+                timeout=self.timeout # prevent hanging requests (default 120s)
             )
             
             return response.choices[0].message.content

@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useRef } from "react"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { Button } from "@/components/ui/button"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Badge } from "@/components/ui/badge"
 import { TrendingUp, TrendingDown, Scale, Loader2, CheckCircle2 } from "lucide-react"
@@ -42,62 +43,77 @@ export function DebateViewer({ ticker, headers, onComplete }: DebateViewerProps)
     const [isConnected, setIsConnected] = useState(false)
     const eventSourceRef = useRef<EventSource | null>(null)
 
-    useEffect(() => {
-        // Use fetch with POST for SSE (EventSource doesn't support POST)
-        const startStream = async () => {
-            setIsConnected(true)
+    const [hasStarted, setHasStarted] = useState(false)
 
-            try {
-                const response = await fetch("http://localhost:8000/api/v1/analyze/stream", {
-                    method: "POST",
-                    headers: {
-                        "Content-Type": "application/json",
-                        ...headers
-                    },
-                    body: JSON.stringify({
-                        ticker: ticker,
-                        focus_areas: ["Technical", "Fundamental", "Market Sentiment"]
-                    })
+    // Manual start function
+    const startStream = async () => {
+        if (hasStarted) return
+        setHasStarted(true)
+        setIsConnected(true)
+
+        // Reset content if restarting
+        setBullContent([])
+        setBearContent([])
+        setJudgeContent("")
+        setStages({
+            context: "pending",
+            bull: "pending",
+            bear: "pending",
+            judge: "pending"
+        })
+
+        try {
+            const response = await fetch("http://localhost:8000/api/v1/analyze/stream", {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json",
+                    ...headers
+                },
+                body: JSON.stringify({
+                    ticker: ticker,
+                    focus_areas: ["Technical", "Fundamental", "Market Sentiment"]
                 })
+            })
 
-                if (!response.ok) throw new Error("Stream failed")
+            if (!response.ok) throw new Error("Stream failed")
 
-                const reader = response.body?.getReader()
-                const decoder = new TextDecoder()
+            const reader = response.body?.getReader()
+            const decoder = new TextDecoder()
 
-                while (reader) {
-                    const { done, value } = await reader.read()
-                    if (done) break
+            while (reader) {
+                const { done, value } = await reader.read()
+                if (done) break
 
-                    const chunk = decoder.decode(value)
-                    const lines = chunk.split("\n")
+                const chunk = decoder.decode(value)
+                const lines = chunk.split("\n")
 
-                    for (const line of lines) {
-                        if (line.startsWith("data: ")) {
-                            try {
-                                const event: DebateEvent = JSON.parse(line.slice(6))
-                                handleEvent(event)
-                            } catch (e) {
-                                console.error("Failed to parse SSE event:", e)
-                            }
+                for (const line of lines) {
+                    if (line.startsWith("data: ")) {
+                        try {
+                            const event: DebateEvent = JSON.parse(line.slice(6))
+                            handleEvent(event)
+                        } catch (e) {
+                            console.error("Failed to parse SSE event:", e)
                         }
                     }
                 }
-            } catch (error) {
-                console.error("Stream error:", error)
-            } finally {
-                setIsConnected(false)
             }
+        } catch (error) {
+            console.error("Stream error:", error)
+            setHasStarted(false) // Allow retry
+        } finally {
+            setIsConnected(false)
         }
+    }
 
-        startStream()
-
+    // Cleanup on unmount
+    useEffect(() => {
         return () => {
             if (eventSourceRef.current) {
                 eventSourceRef.current.close()
             }
         }
-    }, [ticker, headers])
+    }, [])
 
     const handleEvent = (event: DebateEvent) => {
         // Update stage status
@@ -150,83 +166,100 @@ export function DebateViewer({ ticker, headers, onComplete }: DebateViewerProps)
             <CardContent>
                 <Tabs value={activeTab} onValueChange={setActiveTab}>
                     <TabsList className="grid w-full grid-cols-3">
-                        <TabsTrigger value="bull" className="flex items-center gap-2">
+                        <TabsTrigger value="bull" className="flex items-center gap-2" disabled={!hasStarted}>
                             <TrendingUp className="h-4 w-4 text-green-500" />
                             Bull
                             {getStatusIcon("bull")}
                         </TabsTrigger>
-                        <TabsTrigger value="bear" className="flex items-center gap-2">
+                        <TabsTrigger value="bear" className="flex items-center gap-2" disabled={!hasStarted}>
                             <TrendingDown className="h-4 w-4 text-red-500" />
                             Bear
                             {getStatusIcon("bear")}
                         </TabsTrigger>
-                        <TabsTrigger value="judge" className="flex items-center gap-2">
+                        <TabsTrigger value="judge" className="flex items-center gap-2" disabled={!hasStarted}>
                             <Scale className="h-4 w-4 text-purple-500" />
                             Judge
                             {getStatusIcon("judge")}
                         </TabsTrigger>
                     </TabsList>
 
-                    <TabsContent value="bull" className="mt-4 max-h-[400px] overflow-y-auto">
-                        {bullContent.length === 0 && stages.bull === "pending" && (
-                            <div className="text-center py-8 text-muted-foreground">
-                                Waiting for Bull analysis...
-                            </div>
-                        )}
-                        {stages.bull === "thinking" && bullContent.length === 0 && (
-                            <div className="flex items-center justify-center py-8 gap-2">
-                                <Loader2 className="h-5 w-5 animate-spin text-green-500" />
-                                <span className="text-green-600">Bull is thinking...</span>
-                            </div>
-                        )}
-                        <div className="prose prose-sm dark:prose-invert max-w-none space-y-4">
-                            {bullContent.map((content, i) => (
-                                <div key={i} className="p-3 bg-green-50 dark:bg-green-950/20 rounded-lg border border-green-200 dark:border-green-900">
-                                    <ReactMarkdown>{content}</ReactMarkdown>
-                                </div>
-                            ))}
+                    {!hasStarted && (
+                        <div className="flex flex-col items-center justify-center py-12 space-y-4">
+                            <Scale className="h-12 w-12 text-muted-foreground opacity-50" />
+                            <h3 className="text-lg font-medium">Ready to Debate</h3>
+                            <p className="text-sm text-muted-foreground text-center max-w-md">
+                                Initiate a live debate between AI agents to analyze {ticker}. This process may take a minute.
+                            </p>
+                            <Button onClick={startStream} size="lg" className="mt-4">
+                                Start Live Debate
+                            </Button>
                         </div>
-                    </TabsContent>
+                    )}
 
-                    <TabsContent value="bear" className="mt-4 max-h-[400px] overflow-y-auto">
-                        {bearContent.length === 0 && stages.bear === "pending" && (
-                            <div className="text-center py-8 text-muted-foreground">
-                                Waiting for Bear analysis...
-                            </div>
-                        )}
-                        {stages.bear === "thinking" && bearContent.length === 0 && (
-                            <div className="flex items-center justify-center py-8 gap-2">
-                                <Loader2 className="h-5 w-5 animate-spin text-red-500" />
-                                <span className="text-red-600">Bear is thinking...</span>
-                            </div>
-                        )}
-                        <div className="prose prose-sm dark:prose-invert max-w-none space-y-4">
-                            {bearContent.map((content, i) => (
-                                <div key={i} className="p-3 bg-red-50 dark:bg-red-950/20 rounded-lg border border-red-200 dark:border-red-900">
-                                    <ReactMarkdown>{content}</ReactMarkdown>
+                    {hasStarted && (
+                        <>
+                            <TabsContent value="bull" className="mt-4 max-h-[400px] overflow-y-auto">
+                                {bullContent.length === 0 && stages.bull === "pending" && (
+                                    <div className="text-center py-8 text-muted-foreground">
+                                        Waiting for Bull analysis...
+                                    </div>
+                                )}
+                                {stages.bull === "thinking" && bullContent.length === 0 && (
+                                    <div className="flex items-center justify-center py-8 gap-2">
+                                        <Loader2 className="h-5 w-5 animate-spin text-green-500" />
+                                        <span className="text-green-600">Bull is thinking...</span>
+                                    </div>
+                                )}
+                                <div className="prose prose-sm dark:prose-invert max-w-none space-y-4">
+                                    {bullContent.map((content, i) => (
+                                        <div key={i} className="p-3 bg-green-50 dark:bg-green-950/20 rounded-lg border border-green-200 dark:border-green-900">
+                                            <ReactMarkdown>{content}</ReactMarkdown>
+                                        </div>
+                                    ))}
                                 </div>
-                            ))}
-                        </div>
-                    </TabsContent>
+                            </TabsContent>
 
-                    <TabsContent value="judge" className="mt-4 max-h-[400px] overflow-y-auto">
-                        {!judgeContent && stages.judge === "pending" && (
-                            <div className="text-center py-8 text-muted-foreground">
-                                Waiting for Judge verdict...
-                            </div>
-                        )}
-                        {stages.judge === "thinking" && !judgeContent && (
-                            <div className="flex items-center justify-center py-8 gap-2">
-                                <Loader2 className="h-5 w-5 animate-spin text-purple-500" />
-                                <span className="text-purple-600">Judge is deliberating...</span>
-                            </div>
-                        )}
-                        {judgeContent && (
-                            <div className="prose prose-sm dark:prose-invert max-w-none p-3 bg-purple-50 dark:bg-purple-950/20 rounded-lg border border-purple-200 dark:border-purple-900">
-                                <ReactMarkdown>{judgeContent}</ReactMarkdown>
-                            </div>
-                        )}
-                    </TabsContent>
+                            <TabsContent value="bear" className="mt-4 max-h-[400px] overflow-y-auto">
+                                {bearContent.length === 0 && stages.bear === "pending" && (
+                                    <div className="text-center py-8 text-muted-foreground">
+                                        Waiting for Bear analysis...
+                                    </div>
+                                )}
+                                {stages.bear === "thinking" && bearContent.length === 0 && (
+                                    <div className="flex items-center justify-center py-8 gap-2">
+                                        <Loader2 className="h-5 w-5 animate-spin text-red-500" />
+                                        <span className="text-red-600">Bear is thinking...</span>
+                                    </div>
+                                )}
+                                <div className="prose prose-sm dark:prose-invert max-w-none space-y-4">
+                                    {bearContent.map((content, i) => (
+                                        <div key={i} className="p-3 bg-red-50 dark:bg-red-950/20 rounded-lg border border-red-200 dark:border-red-900">
+                                            <ReactMarkdown>{content}</ReactMarkdown>
+                                        </div>
+                                    ))}
+                                </div>
+                            </TabsContent>
+
+                            <TabsContent value="judge" className="mt-4 max-h-[400px] overflow-y-auto">
+                                {!judgeContent && stages.judge === "pending" && (
+                                    <div className="text-center py-8 text-muted-foreground">
+                                        Waiting for Judge verdict...
+                                    </div>
+                                )}
+                                {stages.judge === "thinking" && !judgeContent && (
+                                    <div className="flex items-center justify-center py-8 gap-2">
+                                        <Loader2 className="h-5 w-5 animate-spin text-purple-500" />
+                                        <span className="text-purple-600">Judge is deliberating...</span>
+                                    </div>
+                                )}
+                                {judgeContent && (
+                                    <div className="prose prose-sm dark:prose-invert max-w-none p-3 bg-purple-50 dark:bg-purple-950/20 rounded-lg border border-purple-200 dark:border-purple-900">
+                                        <ReactMarkdown>{judgeContent}</ReactMarkdown>
+                                    </div>
+                                )}
+                            </TabsContent>
+                        </>
+                    )}
                 </Tabs>
             </CardContent>
         </Card>

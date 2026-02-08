@@ -8,7 +8,7 @@ yfinance>=0.2.36
 # TA-Lib wheel might need manual install on Windows, but listing here for reference
 # ta-lib
 openai>=1.10.0
-duckduckgo-search>=4.4.0
+ddgs>=4.0.0
 requests>=2.31.0
 httpx>=0.27.0
 akshare>=1.14.0

@@ -4,7 +4,7 @@ import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
 import { Skeleton } from "@/components/ui/skeleton"
-import { ArrowUp, ArrowDown, Database, Star } from "lucide-react"
+import { ArrowUp, ArrowDown, Database, Star, Building2 } from "lucide-react"
 import { useWatchlistStore } from "@/lib/store/watchlist"
 
 interface TickerHeaderProps {
@@ -116,7 +116,7 @@ export function TickerHeader({
             {/* Main Header */}
             <div className="flex items-center gap-4">
                 <div className="flex items-center justify-center h-16 w-16 rounded-lg bg-primary/10 text-primary font-bold text-xl border border-primary/20">
-                    {symbol.slice(0, 2)}
+                    {/^\d+$/.test(symbol) ? <Building2 className="h-8 w-8" /> : symbol.slice(0, 2)}
                 </div>
                 <div>
                     <div className="flex items-center gap-2">
@@ -149,7 +149,7 @@ export function TickerHeader({
             <div className="flex flex-col items-end">
                 <div className="flex items-baseline gap-2">
                     <span className="text-4xl font-extrabold tracking-tight">
-                        {currencySymbol}{price?.toFixed(2)}
+                        {currencySymbol}{typeof price === 'number' ? price.toFixed(2) : '--'}
                     </span>
                     <span className="text-sm text-muted-foreground font-medium">{effectiveCurrency}</span>
                 </div>

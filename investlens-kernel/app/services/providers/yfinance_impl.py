@@ -32,7 +32,19 @@ class YFinanceProvider(BaseDataProvider):
             else:
                  price = float(info.last_price)
                  previous_close = float(info.previous_close) if info.previous_close else None
-                 name = ticker.upper() 
+                 
+                 # Optimization: access info just for name if missing
+                 # But stock.info triggers a full request. We might rely on cached mapping?
+                 # For now, let's try to get it if we can, or fallback to ticker.
+                 # Actually, fast_info doesn't have name.
+                 # To support better UI, we should try to get the real name.
+                 # We can check if we have it in a lightweight way, or just accept the IO hit.
+                 # Given this is "Quant Kernel", correctness is good.
+                 try:
+                     name = stock.info.get('shortName', stock.info.get('longName', ticker.upper()))
+                 except:
+                     name = ticker.upper()
+                 
                  currency = info.currency
 
             if previous_close:

@@ -37,7 +37,8 @@ export function PriceChart({ ticker, quantMode = false }: { ticker: string, quan
                 const json = await res.json()
 
                 if (json.error || !json.candles) {
-                    throw new Error(json.error || "No data available")
+                    const errorMsg = json.error ? (typeof json.error === 'object' ? JSON.stringify(json.error) : String(json.error)) : "No data available"
+                    throw new Error(errorMsg)
                 }
 
                 setHistory(json.candles)
@@ -57,7 +58,15 @@ export function PriceChart({ ticker, quantMode = false }: { ticker: string, quan
                     setPrediction([])
                 }
             } catch (err: any) {
-                setError(err.message)
+                let message = "Unknown error"
+                if (err instanceof Error) {
+                    message = err.message
+                } else if (typeof err === 'object') {
+                    try { message = JSON.stringify(err) } catch (e) { }
+                } else if (typeof err === 'string') {
+                    message = err
+                }
+                setError(message)
             } finally {
                 setLoading(false)
             }

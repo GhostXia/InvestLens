@@ -14,6 +14,7 @@ import { Button } from "@/components/ui/button"
 import { Brain, LineChart, MessageSquare, AlertTriangle, Eye, EyeOff, RefreshCw } from "lucide-react"
 import ReactMarkdown from 'react-markdown'
 import { useSettingsStore } from "@/lib/store/settings"
+import { fetchAPI } from "@/lib/api"
 import { getApiUrl } from "@/lib/api-config"
 
 interface AnalysisDashboardProps {
@@ -93,11 +94,15 @@ export function AnalysisDashboard({ ticker }: AnalysisDashboardProps) {
             setError(null)
             try {
                 // 1. Fetch Market Data
-                const quoteRes = await fetch(getApiUrl(`/api/v1/quote/${ticker}`))
-                if (!quoteRes.ok) throw new Error("Failed to fetch market data")
-                const quote = await quoteRes.json()
-                if (quote.error) throw new Error(quote.error)
-                setMarketData(quote)
+                // 1. Fetch Market Data
+                // Use fetchAPI to automatically unwrap response and handle errors
+                const quoteData = await fetchAPI(`/api/v1/quote/${ticker}`)
+
+                if (quoteData.error) {
+                    const errorMsg = typeof quoteData.error === 'object' ? JSON.stringify(quoteData.error) : String(quoteData.error)
+                    throw new Error(errorMsg)
+                }
+                setMarketData(quoteData)
                 setLoading(false) // Header can show now
 
                 // 2. Fetch Consensus Analysis (first time auto-fetch)
@@ -111,7 +116,20 @@ export function AnalysisDashboard({ ticker }: AnalysisDashboardProps) {
                 }
 
             } catch (err: any) {
-                setError(err.message || "Unknown error")
+                let message = "Unknown error"
+                if (err instanceof Error) {
+                    message = err.message
+                } else if (typeof err === 'object' && err !== null) {
+                    try {
+                        message = JSON.stringify(err)
+                    } catch (e) {
+                        message = "Unserializable error object"
+                    }
+                } else if (typeof err === 'string') {
+                    message = err
+                }
+                console.error("Dashboard Error Detail:", err)
+                setError(message)
             } finally {
                 setLoading(false)
                 setAnalysisLoading(false)

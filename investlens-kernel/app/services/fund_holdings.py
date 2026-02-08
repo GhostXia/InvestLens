@@ -59,8 +59,8 @@ def _detect_asset_type(symbol: str) -> str:
     if symbol in index_symbols or symbol.startswith('^'):
         return 'index'
     
-    # Default: assume US ETF for other symbols
-    return 'us_etf'
+    # Default: assume Unknown/Global, let get_holdings try both
+    return 'unknown'
 
 
 # =============================================================================
@@ -266,8 +266,61 @@ def get_holdings(symbol: str, asset_type: str = "auto") -> dict:
         return _get_yfinance_etf_holdings(symbol)
     elif asset_type == "index":
         return _get_index_constituents(symbol)
+    elif asset_type == "stock":
+        return _get_stock_holders(symbol)
     else:
-        return _get_yfinance_etf_holdings(symbol)
+        # Try ETF first, if empty, try stock holders
+        result = _get_yfinance_etf_holdings(symbol)
+        if not result.get("holdings"):
+            stock_result = _get_stock_holders(symbol)
+            if stock_result.get("holdings"):
+                return stock_result
+        return result
+
+def _get_stock_holders(symbol: str) -> dict:
+    """
+    Get top institutional holders for a stock.
+    """
+    import yfinance as yf
+    try:
+        logger.info(f"Fetching institutional holders for: {symbol}")
+        ticker = yf.Ticker(symbol)
+        
+        # institutional_holders is a DataFrame
+        # Columns: Holder, SHARES, Date Reported, % Out, Value
+        df = ticker.institutional_holders
+        
+        if df is None or df.empty:
+             return {"symbol": symbol, "holdings": [], "error": "No institutional data"}
+             
+        holdings = []
+        # Take top 10
+        for _, row in df.head(10).iterrows():
+            # Handle different column names yfinance might use
+            holder = row.get("Holder", row.get(0, "Unknown"))
+            shares = row.get("Shares", row.get(1, 0))
+            value = row.get("Value", row.get(4, 0))
+            pct = row.get("% Out", row.get(3, 0))
+            
+            holdings.append({
+                "code": "", # No code for institutions
+                "name": str(holder),
+                "weight": float(pct) * 100 if pct else 0, # Convert decimal to %
+                "shares": int(shares) if shares else 0,
+                "market_value": int(value) if value else 0
+            })
+            
+        return {
+            "symbol": symbol,
+            "asset_type": "stock",
+            "name": "Institutional Holders",
+            "holdings": holdings,
+            "total_count": len(df),
+            "report_date": str(df.iloc[0]["Date Reported"]) if "Date Reported" in df.columns else None
+        }
+    except Exception as e:
+        logger.error(f"Failed to fetch stock holders: {e}")
+        return {"symbol": symbol, "holdings": [], "error": str(e)}
 
 
 def get_holdings_with_realtime(symbol: str, asset_type: str = "auto") -> dict:

@@ -1,5 +1,6 @@
 "use client"
 
+import { use } from "react"
 import { notFound } from "next/navigation"
 import Link from "next/link"
 import ReactMarkdown from 'react-markdown'
@@ -10,12 +11,13 @@ import { ScrollArea } from "@/components/ui/scroll-area"
 import { WIKI_ARTICLES } from "@/lib/wiki-data"
 
 interface PageProps {
-    params: {
+    params: Promise<{
         slug: string
-    }
+    }>
 }
 
-export default function WikiArticlePage({ params }: PageProps) {
+export default function WikiArticlePage(props: PageProps) {
+    const params = use(props.params)
     const article = WIKI_ARTICLES.find(a => a.slug === params.slug)
 
     if (!article) {

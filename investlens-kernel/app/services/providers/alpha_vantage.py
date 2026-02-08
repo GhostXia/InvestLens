@@ -160,7 +160,7 @@ class AlphaVantageProvider(BaseDataProvider):
             logger.error(f"Alpha Vantage search failed: {e}")
             return []
 
-    def get_historical(self, ticker: str, period: str = "1y") -> Optional[List[Dict[str, Any]]]:
+    def get_historical(self, ticker: str, period: str = "1y") -> Optional[Dict[str, Any]]:
         """
         Fetch historical data using TIME_SERIES_DAILY_ADJUSTED.
         """
@@ -196,10 +196,10 @@ class AlphaVantageProvider(BaseDataProvider):
             # Calculate cutoff date
             from datetime import datetime, timedelta
             cutoff = datetime.now() - timedelta(days=365)
-            if period == "1m": cutoff = datetime.now() - timedelta(days=30)
-            elif period == "3m": cutoff = datetime.now() - timedelta(days=90)
-            elif period == "6m": cutoff = datetime.now() - timedelta(days=180)
-            elif period == "2y": cutoff = datetime.now() - timedelta(days=730)
+            if period in ["1m", "1mo"]: cutoff = datetime.now() - timedelta(days=30)
+            elif period in ["3m", "3mo"]: cutoff = datetime.now() - timedelta(days=90)
+            elif period in ["6m", "6mo"]: cutoff = datetime.now() - timedelta(days=180)
+            elif period in ["2y"]: cutoff = datetime.now() - timedelta(days=730)
             
             for date_str, values in timeseries.items():
                 dt = datetime.strptime(date_str, "%Y-%m-%d")
@@ -219,7 +219,13 @@ class AlphaVantageProvider(BaseDataProvider):
             # Or depends on frontend. Highcharts usually handles it but sorting is safer.
             candles.sort(key=lambda x: x["date"])
             
-            return candles
+            return {
+                "symbol": ticker.upper(),
+                "period": period,
+                "interval": "1d",
+                "candles": candles,
+                "data_source": "alpha_vantage"
+            }
 
         except Exception as e:
             logger.error(f"Alpha Vantage historical failed: {e}")

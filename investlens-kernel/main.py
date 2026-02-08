@@ -12,6 +12,9 @@ This service is responsible for:
 
 import os
 import logging
+from dotenv import load_dotenv
+
+load_dotenv()
 # pyre-ignore[21]: fastapi installed but not found
 from fastapi import FastAPI, HTTPException, Header, Request
 # pyre-ignore[21]: fastapi installed but not found
@@ -112,8 +115,11 @@ async def get_available_models(request: dict):
     from openai import OpenAI
     
     try:
-        base_url = request.get("base_url", "https://api.openai.com/v1")
-        api_key = request.get("api_key", "sk-placeholder")
+        base_url = request.get("base_url") or os.getenv("OPENAI_BASE_URL", "https://api.openai.com/v1")
+        api_key = request.get("api_key") or os.getenv("OPENAI_API_KEY")
+        
+        if not api_key:
+             return {"models": [], "error": "No API key provided"}
         
         logger.info(f"Fetching models from: {base_url}")
         
@@ -310,7 +316,7 @@ def analyze_asset(
         response = consensus.generate_consensus_analysis(
             ticker=analysis_request.ticker,
             focus_areas=analysis_request.focus_areas,
-            api_key=x_llm_api_key,
+            api_key=x_llm_api_key or os.getenv("OPENAI_API_KEY"),
             base_url=x_llm_base_url,
             model=x_llm_model,
             quant_mode=quant_mode_enabled,
@@ -363,7 +369,7 @@ def analyze_asset_stream(
         consensus.generate_consensus_analysis_stream(
             ticker=analysis_request.ticker,
             focus_areas=analysis_request.focus_areas,
-            api_key=x_llm_api_key,
+            api_key=x_llm_api_key or os.getenv("OPENAI_API_KEY"),
             base_url=x_llm_base_url,
             model=x_llm_model,
             quant_mode=quant_mode_enabled,
@@ -447,7 +453,9 @@ Guidelines:
         messages.append({"role": "user", "content": message})
         
         # Configure client
-        api_key = x_llm_api_key or "sk-no-key-required"
+        api_key = x_llm_api_key or os.getenv("OPENAI_API_KEY")
+        if not api_key:
+            raise HTTPException(status_code=401, detail="Missing API Key")
         base_url = x_llm_base_url or "https://api.openai.com/v1"
         model_name = x_llm_model or "gpt-3.5-turbo"
         
@@ -473,3 +481,4 @@ app.include_router(fund.router)             # New unified /holdings endpoint
 app.include_router(fund.legacy_router)      # Legacy /fund endpoint for compatibility
 app.include_router(watchlist.router)        # User watchlist management
 app.include_router(portfolio.router)        # AI Portfolio Advisor
+app.include_router(search.router)           # Search and Suggestions

@@ -98,7 +98,12 @@ export function HoldingsPanel({ symbol }: HoldingsPanelProps) {
         return null
     }
 
-    // Don't render if no data and not loading
+    // INITIAL LOAD: Don't render while loading the first time (prevents flash for stocks)
+    if (loading && !holdingsData) {
+        return null
+    }
+
+    // Don't render if no data and not loading (fallback)
     if (!holdingsData && !loading && hasHoldings === null) {
         return null
     }
@@ -120,6 +125,7 @@ export function HoldingsPanel({ symbol }: HoldingsPanelProps) {
         if (type === "us_etf") return "📊 ETF Holdings"
         if (type === "hk_etf") return "📊 ETF 持仓"
         if (type === "index") return "📊 指数成分"
+        if (type === "stock") return "🏆 机构持仓"
         return "📊 持仓/成分"
     }
 
@@ -147,6 +153,8 @@ export function HoldingsPanel({ symbol }: HoldingsPanelProps) {
             </span>
         )
     }
+
+    const isStock = holdingsData?.asset_type === 'stock'
 
     return (
         <Card>
@@ -208,13 +216,16 @@ export function HoldingsPanel({ symbol }: HoldingsPanelProps) {
                             {/* Table Header */}
                             <div className="grid grid-cols-12 gap-2 text-xs text-muted-foreground font-medium py-1 border-b">
                                 <div className="col-span-1">#</div>
-                                <div className="col-span-5">名称</div>
-                                <div className="col-span-2 text-right">权重</div>
+                                <div className="col-span-5">{isStock ? "机构名称" : "名称"}</div>
+                                <div className="col-span-2 text-right">{isStock ? "持股比例" : "权重"}</div>
                                 {showRealtime && (
                                     <>
                                         <div className="col-span-2 text-right">现价</div>
                                         <div className="col-span-2 text-right">涨跌</div>
                                     </>
+                                )}
+                                {isStock && !showRealtime && (
+                                    <div className="col-span-4 text-right">持股数</div>
                                 )}
                             </div>
 
@@ -229,11 +240,13 @@ export function HoldingsPanel({ symbol }: HoldingsPanelProps) {
                                         <div className="col-span-1 text-muted-foreground">
                                             {index + 1}
                                         </div>
-                                        <div className="col-span-5">
+                                        <div className="col-span-5 truncate" title={holding.name}>
                                             <span className="font-medium">{holding.name}</span>
-                                            <span className="text-xs text-muted-foreground ml-2">
-                                                {holding.code}
-                                            </span>
+                                            {!isStock && (
+                                                <span className="text-xs text-muted-foreground ml-2">
+                                                    {holding.code}
+                                                </span>
+                                            )}
                                         </div>
                                         <div className="col-span-2 text-right font-mono">
                                             {holding.weight > 0 ? `${holding.weight.toFixed(2)}%` : '--'}
@@ -247,6 +260,12 @@ export function HoldingsPanel({ symbol }: HoldingsPanelProps) {
                                                     {renderChangeIndicator(holding.change, holding.change_pct)}
                                                 </div>
                                             </>
+                                        )}
+                                        {isStock && !showRealtime && (
+                                            <div className="col-span-4 text-right font-mono text-xs">
+                                                {/* Access original shares from raw holding since normalized doesn't explicitly pass it well in typings yet */}
+                                                {rawHolding.shares ? (rawHolding.shares / 1000000).toFixed(2) + 'M' : '--'}
+                                            </div>
                                         )}
                                     </div>
                                 )

@@ -42,7 +42,11 @@ export const useWatchlistStore = create<WatchlistState>()(
                         })
                     }
                 } catch (error) {
-                    console.error('Failed to fetch watchlist:', error)
+                    console.error('Failed to fetch watchlist:', JSON.stringify(error, Object.getOwnPropertyNames(error)))
+                    if (error instanceof Error) {
+                        console.error(error.message)
+                        console.error(error.stack)
+                    }
                 } finally {
                     set({ loading: false })
                 }

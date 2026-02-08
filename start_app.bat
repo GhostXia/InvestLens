@@ -64,7 +64,7 @@ echo.
 
 :: Launch Backend
 echo Launching Backend with %ACTIVATE_CMD%...
-start "InvestLens Kernel" cmd /k "cd investlens-kernel && call %ACTIVATE_CMD% && python -m uvicorn main:app --reload --host 0.0.0.0 --port 8000"
+start "InvestLens Kernel" cmd /k "cd investlens-kernel && call %ACTIVATE_CMD% && python -m uvicorn main:app --reload --host 127.0.0.1 --port 8000"
 
 :: Launch Frontend
 start "InvestLens Web" cmd /k "cd investlens-web && npm run dev"
